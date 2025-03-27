@@ -8,11 +8,16 @@ struct sphere
 	float radius;
 };
 
-struct ray
+struct Ray
 {
 	vec3 origin;
 	vec3 direction;
 };
+
+vec3 ray_at(float t, Ray ray) 
+{
+	return ray.origin + t*ray.direction;
+}
 
 void main()
 {
@@ -23,6 +28,7 @@ void main()
 	float x = -(float(pixel_coords.x * 2 - dims.x) / dims.x); // transforms to [-1.0, 1.0]
 	float y = -(float(pixel_coords.y * 2 - dims.y) / dims.y); // transforms to [-1.0, 1.0]
 
+	//get ray direction and origin
 	float fov = 90.0;
 	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 	vec3 ray_o = vec3(x, y, 0.0);
