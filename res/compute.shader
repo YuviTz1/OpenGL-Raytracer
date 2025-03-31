@@ -19,10 +19,25 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
+bool hit_sphere(sphere s, Ray ray)
+{
+	vec3 oc = ray.origin - s.position;
+	float a = dot(ray.direction, ray.direction);
+	float b = 2.0 * dot(oc, ray.direction);
+	float c = dot(oc, oc) - s.radius * s.radius;
+	float discriminant = b * b - 4.0 * a * c;
+	return (discriminant > 0.0);
+}
+
 vec3 ray_color(Ray ray)
 {
+
+	if(hit_sphere(sphere(vec3(0.0, 0.0, -5.0), 0.5), ray))
+	{
+		return vec3(1.0, 0.0, 0.0);
+	}
 	vec3 unit_direction = normalize(ray.direction);
-	float a = 0.5*(unit_direction.y + 1.0);
+	float a = 0.5*(unit_direction.y + 1.0);			// to bring in range [0.0, 1.0]
 	return (1.0-a)*vec3(1.0, 1.0, 1.0) + a*vec3(0.5, 0.7, 1.0);
 }
 
@@ -44,20 +59,6 @@ void main()
 	Ray ray;
 	ray.origin=ray_o;
 	ray.direction=ray_d;
-
-	// vec3 sphere_c = vec3(0.0, 0.0, -5.0);
-	// float sphere_r = 1.0;
-
-	// vec3 o_c = ray_o - sphere_c;
-	// float b = dot(ray_d, o_c);
-	// float c = dot(o_c, o_c) - sphere_r * sphere_r;
-	// float intersectionState = b * b - c;
-	// vec3 intersection = ray_o + ray_d * (-b + sqrt(b * b - c));
-
-	// if (intersectionState >= 0.0)
-	// {
-	// 	pixel = vec4((normalize(intersection - sphere_c) + 1.0) / 2.0, 1.0);
-	// }
 
 	pixel=vec4(ray_color(ray),1.0);
 
