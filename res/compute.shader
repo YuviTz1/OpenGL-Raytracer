@@ -19,6 +19,13 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
+vec3 ray_color(Ray ray)
+{
+	vec3 unit_direction = normalize(ray.direction);
+	float a = 0.5*(unit_direction.y + 1.0);
+	return (1.0-a)*vec3(1.0, 1.0, 1.0) + a*vec3(0.5, 0.7, 1.0);
+}
+
 void main()
 {
 	vec4 pixel = vec4(0.075, 0.133, 0.173, 1.0);
@@ -34,19 +41,25 @@ void main()
 	vec3 ray_o = vec3(x, y, 0.0);
 	vec3 ray_d = normalize(ray_o - cam_o);
 
-	vec3 sphere_c = vec3(0.0, 0.0, -5.0);
-	float sphere_r = 1.0;
+	Ray ray;
+	ray.origin=ray_o;
+	ray.direction=ray_d;
 
-	vec3 o_c = ray_o - sphere_c;
-	float b = dot(ray_d, o_c);
-	float c = dot(o_c, o_c) - sphere_r * sphere_r;
-	float intersectionState = b * b - c;
-	vec3 intersection = ray_o + ray_d * (-b + sqrt(b * b - c));
+	// vec3 sphere_c = vec3(0.0, 0.0, -5.0);
+	// float sphere_r = 1.0;
 
-	if (intersectionState >= 0.0)
-	{
-		pixel = vec4((normalize(intersection - sphere_c) + 1.0) / 2.0, 1.0);
-	}
+	// vec3 o_c = ray_o - sphere_c;
+	// float b = dot(ray_d, o_c);
+	// float c = dot(o_c, o_c) - sphere_r * sphere_r;
+	// float intersectionState = b * b - c;
+	// vec3 intersection = ray_o + ray_d * (-b + sqrt(b * b - c));
+
+	// if (intersectionState >= 0.0)
+	// {
+	// 	pixel = vec4((normalize(intersection - sphere_c) + 1.0) / 2.0, 1.0);
+	// }
+
+	pixel=vec4(ray_color(ray),1.0);
 
 	imageStore(screen, pixel_coords, pixel);
 }

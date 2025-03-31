@@ -1,0 +1,1 @@
+g++ src/main.cpp src/shader_class.cpp src/stb_image.cpp -lGL -lGLEW -lglfw
