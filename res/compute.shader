@@ -19,23 +19,34 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
-bool hit_sphere(sphere s, Ray ray)
+float hit_sphere(sphere s, Ray ray)
 {
 	vec3 oc = ray.origin - s.position;
 	float a = dot(ray.direction, ray.direction);
 	float b = 2.0 * dot(oc, ray.direction);
 	float c = dot(oc, oc) - s.radius * s.radius;
 	float discriminant = b * b - 4.0 * a * c;
-	return (discriminant > 0.0);
+	
+	if(discriminant < 0.0)
+	{
+		return -1.0;
+	}
+	else
+	{
+		return (-b - sqrt(discriminant)) / (2.0 * a);
+	}
 }
 
 vec3 ray_color(Ray ray)
 {
-
-	if(hit_sphere(sphere(vec3(0.0, 0.0, -5.0), 0.5), ray))
+	float hit_sphere_t = hit_sphere(sphere(vec3(0.0, 0.0, -5.0), 0.5), ray);
+	if(hit_sphere_t > 0.0)
 	{
-		return vec3(1.0, 0.0, 0.0);
+		vec3 N = normalize(ray_at(hit_sphere_t, ray) - vec3(0.0, 0.0, -5.0));
+		return 0.5 * vec3(N.x + 1.0, N.y + 1.0, N.z + 1.0);
 	}
+	
+	// background gradient
 	vec3 unit_direction = normalize(ray.direction);
 	float a = 0.5*(unit_direction.y + 1.0);			// to bring in range [0.0, 1.0]
 	return (1.0-a)*vec3(1.0, 1.0, 1.0) + a*vec3(0.5, 0.7, 1.0);
@@ -54,7 +65,7 @@ void main()
 	float fov = 90.0;
 	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 	vec3 ray_o = vec3(x, y, 0.0);
-	vec3 ray_d = normalize(ray_o - cam_o);
+	vec3 ray_d = normalize(cam_o - ray_o);
 
 	Ray ray;
 	ray.origin=ray_o;
