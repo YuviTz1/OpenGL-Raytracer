@@ -2,7 +2,7 @@
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 
-struct sphere
+struct Sphere
 {
 	vec3 position;
 	float radius;
@@ -19,12 +19,12 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
-float hit_sphere(sphere s, Ray ray)
+float hit_sphere(Ray ray, Sphere sphere)
 {
-	vec3 oc = ray.origin - s.position;
+	vec3 oc = ray.origin - sphere.position;
 	float a = dot(ray.direction, ray.direction);
 	float b = 2.0 * dot(oc, ray.direction);
-	float c = dot(oc, oc) - s.radius * s.radius;
+	float c = dot(oc, oc) - sphere.radius * sphere.radius;
 	float discriminant = b * b - 4.0 * a * c;
 	
 	if(discriminant < 0.0)
@@ -37,12 +37,12 @@ float hit_sphere(sphere s, Ray ray)
 	}
 }
 
-vec3 ray_color(Ray ray)
+vec3 ray_color(Ray ray, Sphere sphere)
 {
-	float hit_sphere_t = hit_sphere(sphere(vec3(0.0, 0.0, -5.0), 0.5), ray);
+	float hit_sphere_t = hit_sphere(ray, sphere);
 	if(hit_sphere_t > 0.0)
 	{
-		vec3 N = normalize(ray_at(hit_sphere_t, ray) - vec3(0.0, 0.0, -5.0));
+		vec3 N = normalize(ray_at(hit_sphere_t, ray) - sphere.position);
 		return 0.5 * vec3(N.x + 1.0, N.y + 1.0, N.z + 1.0);
 	}
 	
@@ -71,7 +71,11 @@ void main()
 	ray.origin=ray_o;
 	ray.direction=ray_d;
 
-	pixel=vec4(ray_color(ray),1.0);
+	Sphere sphere;
+	sphere.position=vec3(0.0, 0.0, -4.0);
+	sphere.radius=0.5;
+
+	pixel=vec4(ray_color(ray, sphere),1.0);
 
 	imageStore(screen, pixel_coords, pixel);
 }
