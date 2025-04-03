@@ -19,7 +19,15 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
-float hit_sphere(Ray ray, Sphere sphere)
+struct HitRecord
+{
+	vec3 point;
+	vec3 normal;
+	float t;
+	bool front_face;
+};
+
+bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
 	float a = dot(ray.direction, ray.direction);
@@ -29,21 +37,27 @@ float hit_sphere(Ray ray, Sphere sphere)
 	
 	if(discriminant < 0.0)
 	{
-		return -1.0;
+		return false;
 	}
-	else
-	{
-		return (-b - sqrt(discriminant)) / (2.0 * a);
-	}
+
+	float root = (-b - sqrt(discriminant)) / (2.0 * a);
+	rec.t = root;
+	rec.point = ray_at(rec.t, ray);
+	vec3 outward_normal = normalize(rec.point - sphere.position);
+
+	rec.front_face = dot(ray.direction, outward_normal) < 0.0;
+	rec.normal = normalize(rec.front_face ? outward_normal : -outward_normal);
+
+	return true;
 }
 
 vec3 ray_color(Ray ray, Sphere sphere)
 {
-	float hit_sphere_t = hit_sphere(ray, sphere);
-	if(hit_sphere_t > 0.0)
+	HitRecord rec;
+	bool hit = hit_sphere(ray, sphere, rec);
+	if(hit)
 	{
-		vec3 N = normalize(ray_at(hit_sphere_t, ray) - sphere.position);
-		return 0.5 * vec3(N.x + 1.0, N.y + 1.0, N.z + 1.0);
+		return 0.5 * vec3(rec.normal.x + 1.0, rec.normal.y + 1.0, rec.normal.z + 1.0);
 	}
 	
 	// background gradient
