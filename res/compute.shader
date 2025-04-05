@@ -28,6 +28,31 @@ struct HitRecord
 	bool front_face;
 };
 
+uint seed;
+uint wang_hash(uint seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+float random_float()
+{
+    seed = wang_hash(seed);
+    return float(seed) / 4294967296.0;
+}
+
+vec3 random_unit_vector()
+{
+    float z = random_float() * 2.0 - 1.0;
+    float a = random_float() * 2.0 * 3.1415926;
+    float r = sqrt(1.0 - z * z);
+    return vec3(r * cos(a), r * sin(a), z);
+}
+
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
