@@ -77,19 +77,32 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 	return true;
 }
 
-vec3 ray_color(Ray ray, Sphere sphere)
+vec3 ray_color(Ray ray, Sphere spheres[2])
 {
-	HitRecord rec;
-	bool hit = hit_sphere(ray, sphere, rec);
-	if(hit)
+	HitRecord closest_rec;
+	float closest_t = 1e20; // A large value to represent infinity
+	bool hit_anything = false;
+
+	for (int i = 0; i < 2; i++)
 	{
-		return 0.5 * vec3(rec.normal.x + 1.0, rec.normal.y + 1.0, rec.normal.z + 1.0);
+		HitRecord temp_rec;
+		if (hit_sphere(ray, spheres[i], temp_rec) && temp_rec.t < closest_t)
+		{
+			hit_anything = true;
+			closest_t = temp_rec.t;
+			closest_rec = temp_rec;
+		}
 	}
-	
-	//background gradient
+
+	if (hit_anything)
+	{
+		return 0.5 * vec3(closest_rec.normal.x + 1.0, closest_rec.normal.y + 1.0, closest_rec.normal.z + 1.0);
+	}
+
+	// Background gradient
 	vec3 unit_direction = normalize(ray.direction);
-	float a = 0.5*(unit_direction.y + 1.0);			//to bring in range [0.0, 1.0]
-	return (1.0-a)*vec3(1.0, 1.0, 1.0) + a*vec3(0.5, 0.7, 1.0);
+	float a = 0.5 * (unit_direction.y + 1.0); // To bring in range [0.0, 1.0]
+	return (1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0);
 }
 
 void main()
@@ -112,10 +125,18 @@ void main()
 	ray.direction=ray_d;
 
 	Sphere sphere;
-	sphere.position=vec3(0.0, 0.0, -4.0);
-	sphere.radius=0.5;
+	sphere.position=vec3(0.0, 0.0, -6.0);
+	sphere.radius=1;
 
-	pixel=vec4(ray_color(ray, sphere),1.0);
+	Sphere ground;
+	ground.position=vec3(0.0, -101, -6.0);
+	ground.radius=100.0;
+
+	Sphere spheres[2];
+	spheres[0]=sphere;
+	spheres[1]=ground;
+
+	pixel=vec4(ray_color(ray, spheres),1.0);
 
 	imageStore(screen, pixel_coords, pixel);
 }
