@@ -2,6 +2,9 @@
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
 
+const float MIN_DIST = 0.0001;
+const float MAX_DIST = 1000.0;
+
 struct Sphere
 {
 	vec3 position;
@@ -67,6 +70,14 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 	}
 
 	float root = (-b - sqrt(discriminant)) / (2.0 * a);
+	if (root < MIN_DIST || root > MAX_DIST)	//roots are outside of the range
+	{
+		root = (-b + sqrt(discriminant)) / (2.0 * a);
+		if (root < MIN_DIST || root > MAX_DIST)
+		{
+			return false;
+		}
+	}
 	rec.t = root;
 	rec.point = ray_at(rec.t, ray);
 	vec3 outward_normal = normalize(rec.point - sphere.position);	//normal from the sphere center to the hit point
@@ -80,7 +91,7 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 vec3 ray_color(Ray ray, Sphere spheres[2])
 {
 	HitRecord closest_rec;
-	float closest_t = 1e20; // A large value to represent infinity
+	float closest_t = MAX_DIST; // A large value to represent infinity
 	bool hit_anything = false;
 
 	for (int i = 0; i < 2; i++)
