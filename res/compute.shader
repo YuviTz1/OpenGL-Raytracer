@@ -88,13 +88,13 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 	return true;
 }
 
-vec3 ray_color(Ray ray, Sphere spheres[2])
+vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 {
 	HitRecord closest_rec;
 	float closest_t = MAX_DIST; // A large value to represent infinity
 	bool hit_anything = false;
 
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < spheres_count; i++)
 	{
 		HitRecord temp_rec;
 		if (hit_sphere(ray, spheres[i], temp_rec) && temp_rec.t < closest_t)
@@ -147,7 +147,7 @@ void main()
 	spheres[0]=sphere;
 	spheres[1]=ground;
 
-	pixel=vec4(ray_color(ray, spheres),1.0);
+	pixel=vec4(ray_color(ray, 2, spheres),1.0);
 
 	imageStore(screen, pixel_coords, pixel);
 }
