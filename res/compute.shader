@@ -48,9 +48,9 @@ float random_float()
     return float(seed) / 4294967296.0;
 }
 
-vec3 random_float(float min, float max)
+float random_float(float min, float max)
 {
-	return vec3(min + (max - min) * random_float());
+	return float(min + (max - min) * random_float());
 }
 
 vec3 random_vector()
@@ -89,14 +89,6 @@ vec3 random_on_hemisphere(vec3 normal)
 	}
 }
 
-// vec3 random_unit_vector()
-// {
-//     float z = random_float() * 2.0 - 1.0;
-//     float a = random_float() * 2.0 * 3.1415926;
-//     float r = sqrt(1.0 - z * z);
-//     return vec3(r * cos(a), r * sin(a), z);
-// }
-
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
@@ -131,30 +123,51 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 
 vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 {
-	HitRecord closest_rec;
-	float closest_t = MAX_DIST; // A large value to represent infinity
-	bool hit_anything = false;
+	vec3 accumulated_color = vec3(1.0); // Start with white light
+	vec3 final_color = vec3(0.0);       // Accumulated final color
+	int max_bounces = 10;
 
-	for (int i = 0; i < spheres_count; i++)
+	for (int bounce = 0; bounce < max_bounces; bounce++)
 	{
-		HitRecord temp_rec;
-		if (hit_sphere(ray, spheres[i], temp_rec) && temp_rec.t < closest_t)
+		HitRecord closest_rec;
+		float closest_t = MAX_DIST; // A large value to represent infinity
+		bool hit_anything = false;
+
+		// Find the closest sphere hit
+		for (int i = 0; i < spheres_count; i++)
 		{
-			hit_anything = true;
-			closest_t = temp_rec.t;
-			closest_rec = temp_rec;
+			HitRecord temp_rec;
+			if (hit_sphere(ray, spheres[i], temp_rec) && temp_rec.t < closest_t)
+			{
+				hit_anything = true;
+				closest_t = temp_rec.t;
+				closest_rec = temp_rec;
+			}
+		}
+
+		if (hit_anything)
+		{
+			// Calculate scattered ray
+			vec3 direction = random_on_hemisphere(closest_rec.normal);
+			Ray scattered;
+			scattered.origin = closest_rec.point;
+			scattered.direction = direction;
+
+			// Accumulate color
+			accumulated_color *= 0.5; // Attenuation factor
+			ray = scattered;         // Update ray for the next bounce
+		}
+		else
+		{
+			// Background gradient
+			vec3 unit_direction = normalize(ray.direction);
+			float a = 0.5 * (unit_direction.y + 1.0); // To bring in range [0.0, 1.0]
+			final_color += accumulated_color * ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0));
+			break;
 		}
 	}
 
-	if (hit_anything)
-	{
-		return 0.5 * vec3(closest_rec.normal.x + 1.0, closest_rec.normal.y + 1.0, closest_rec.normal.z + 1.0);
-	}
-
-	// Background gradient
-	vec3 unit_direction = normalize(ray.direction);
-	float a = 0.5 * (unit_direction.y + 1.0); // To bring in range [0.0, 1.0]
-	return (1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0);
+	return final_color;
 }
 
 void main()
