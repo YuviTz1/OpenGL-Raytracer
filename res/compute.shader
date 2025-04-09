@@ -48,13 +48,54 @@ float random_float()
     return float(seed) / 4294967296.0;
 }
 
+vec3 random_float(float min, float max)
+{
+	return vec3(min + (max - min) * random_float());
+}
+
+vec3 random_vector()
+{
+	return vec3(random_float(), random_float(), random_float());
+}
+
+vec3 random_vector(float min, float max)
+{
+	return vec3(random_float(min, max), random_float(min, max), random_float(min, max));
+}
+
 vec3 random_unit_vector()
 {
-    float z = random_float() * 2.0 - 1.0;
-    float a = random_float() * 2.0 * 3.1415926;
-    float r = sqrt(1.0 - z * z);
-    return vec3(r * cos(a), r * sin(a), z);
+	while (true)
+	{
+		vec3 p = random_vector(-1.0, 1.0);
+		float length_squared = dot(p, p);
+		if ( 1e-160 <=length_squared && length_squared <= 1.0)
+		{
+			return p/sqrt(length_squared);
+		}
+	}
 }
+
+vec3 random_on_hemisphere(vec3 normal)
+{
+	vec3 on_unit_sphere = random_unit_vector();
+	if (dot(on_unit_sphere, normal) > 0.0)
+	{
+		return on_unit_sphere;
+	}
+	else
+	{
+		return -on_unit_sphere;
+	}
+}
+
+// vec3 random_unit_vector()
+// {
+//     float z = random_float() * 2.0 - 1.0;
+//     float a = random_float() * 2.0 * 3.1415926;
+//     float r = sqrt(1.0 - z * z);
+//     return vec3(r * cos(a), r * sin(a), z);
+// }
 
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
