@@ -125,7 +125,7 @@ vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 {
 	vec3 accumulated_color = vec3(1.0); // Start with white light
 	vec3 final_color = vec3(0.0);       // Accumulated final color
-	int max_bounces = 10;
+	int max_bounces = 15;
 
 	for (int bounce = 0; bounce < max_bounces; bounce++)
 	{
@@ -172,36 +172,46 @@ vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 
 void main()
 {
-	vec4 pixel = vec4(0.075, 0.133, 0.173, 1.0);		//random pixel colors; depracated
+	vec4 pixel = vec4(0.075, 0.133, 0.173, 1.0);		//random pixel colors; redundant
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+
+	seed = uint(pixel_coords.x ^ pixel_coords.y ^ uint(gl_GlobalInvocationID.x * 1973 + gl_GlobalInvocationID.y * 9277));
 	
 	ivec2 dims = imageSize(screen);
-	float x = -(float(pixel_coords.x * 2 - dims.x) / dims.x); //transforms to [-1.0, 1.0]
-	float y = -(float(pixel_coords.y * 2 - dims.y) / dims.y); //transforms to [-1.0, 1.0]
 
-	//get ray direction and origin
 	float fov = 90.0;
 	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
-	vec3 ray_o = vec3(x, y, 0.0);
-	vec3 ray_d = normalize(cam_o - ray_o);
 
-	Ray ray;
-	ray.origin=ray_o;
-	ray.direction=ray_d;
+	int samples_per_pixel = 15;
+	vec3 accumulated_color = vec3(0.0);
 
-	Sphere sphere;
-	sphere.position=vec3(0.0, 0.0, -6.0);
-	sphere.radius=1;
+	for (int i=0; i<samples_per_pixel; i++)
+	{
+		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);
+        float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);
 
-	Sphere ground;
-	ground.position=vec3(0.0, -101, -6.0);
-	ground.radius=100.0;
+		vec3 ray_o = vec3(x, y, 0.0);
+		vec3 ray_d = normalize(cam_o - ray_o);
 
-	Sphere spheres[2];
-	spheres[0]=sphere;
-	spheres[1]=ground;
+		Ray ray;
+		ray.origin=ray_o;
+		ray.direction=ray_d;
 
-	pixel=vec4(ray_color(ray, 2, spheres),1.0);
+		Sphere sphere;
+		sphere.position=vec3(0.0, 0.0, -6.0);
+		sphere.radius=1;
 
+		Sphere ground;
+		ground.position=vec3(0.0, -101, -6.0);
+		ground.radius=100.0;
+
+		Sphere spheres[2];
+		spheres[0]=sphere;
+		spheres[1]=ground;
+
+		accumulated_color += ray_color(ray, 2, spheres);
+	}
+
+	pixel = vec4(accumulated_color / float(samples_per_pixel), 1.0);
 	imageStore(screen, pixel_coords, pixel);
 }
