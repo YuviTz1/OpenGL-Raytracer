@@ -89,6 +89,15 @@ vec3 random_on_hemisphere(vec3 normal)
 	}
 }
 
+vec3 linear_to_gamma(vec3 color)
+{
+	if(color.r < 0.0 || color.g < 0.0 || color.b < 0.0)
+	{
+		return vec3(0.0);
+	}
+	return vec3(sqrt(color.r), sqrt(color.g), sqrt(color.b));
+}
+
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
@@ -212,6 +221,6 @@ void main()
 		accumulated_color += ray_color(ray, 2, spheres);
 	}
 
-	pixel = vec4(accumulated_color / float(samples_per_pixel), 1.0);
+	pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);
 	imageStore(screen, pixel_coords, pixel);
 }
