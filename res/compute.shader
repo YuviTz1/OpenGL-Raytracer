@@ -148,7 +148,7 @@ vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 		if (hit_anything)
 		{
 			// Calculate scattered ray
-			vec3 direction = random_on_hemisphere(closest_rec.normal);
+			vec3 direction = closest_rec.normal + random_unit_vector();
 			Ray scattered;
 			scattered.origin = closest_rec.point;
 			scattered.direction = direction;
@@ -187,8 +187,8 @@ void main()
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);
-        float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);
+		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
+        float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
 		vec3 ray_d = normalize(cam_o - ray_o);
