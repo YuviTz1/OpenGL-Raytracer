@@ -111,6 +111,12 @@ vec3 linear_to_gamma(vec3 color)
 	return vec3(sqrt(color.r), sqrt(color.g), sqrt(color.b));
 }
 
+//reflect function for metals
+vec3 reflect(vec3 v, vec3 n)
+{
+    return v - 2.0 * dot(v, n) * n;
+}
+
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
@@ -157,10 +163,21 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 
 		return true;
 	}
+	if(rec.material.type == MATERIAL_METAL)
+	{
+		vec3 reflected = reflect(normalize(ray.direction), rec.normal);
+		scattered.origin = rec.point;
+		scattered.direction = normalize(reflected + rec.material.roughness * random_on_hemisphere(rec.normal));
+
+		scattered = Ray(scattered.origin, scattered.direction);
+		attenuation = rec.material.albedo;
+
+		return (dot(scattered.direction, rec.normal) > 0.0);
+	}
 	return false;
 }
 
-vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
+vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[3])
 {
 	vec3 accumulated_color = vec3(1.0); // Start with white light
 	vec3 final_color = vec3(0.0);       // Accumulated final color
@@ -245,21 +262,26 @@ void main()
 		ray.direction=ray_d;
 
 		Sphere sphere;
-		sphere.position=vec3(0.0, 0.0, -6.0);
+		sphere.position=vec3(-1.0, 0.0, -6.0);
 		sphere.radius=1;
 		sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0);
-
 
 		Sphere ground;
 		ground.position=vec3(0.0, -101, -6.0);
 		ground.radius=100.0;
 		ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0);
 
-		Sphere spheres[2];
+		Sphere metal_sphere;
+		metal_sphere.position=vec3(1.0, 0.0, -6.0);
+		metal_sphere.radius=1.0;
+		metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1);
+
+		Sphere spheres[3];
 		spheres[0]=sphere;
 		spheres[1]=ground;
+		spheres[2]=metal_sphere;
 
-		accumulated_color += ray_color(ray, 2, spheres);
+		accumulated_color += ray_color(ray, 3, spheres);
 	}
 
 	pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);
