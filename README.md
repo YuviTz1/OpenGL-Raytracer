@@ -7,6 +7,7 @@ ToDo
 - [ ] Glass materials
 - [X] Anti-Aliasing
 - [ ] Temporal accumualtion
+- [ ] Interactive camera
 
 # Some Screenshots
 ![A diffuse and a metal sphere](https://github.com/YuviTz1/OpenGL-Raytracer/blob/main/imgs/Screenshot_20250413_153505.png)
