@@ -20,6 +20,7 @@ struct Sphere
 {
 	vec3 position;
 	float radius;
+	Material material;
 };
 
 struct Ray
@@ -40,6 +41,7 @@ struct HitRecord
 	vec3 normal;
 	float t;
 	bool front_face;
+	Material material;
 };
 
 uint seed;
@@ -137,8 +139,25 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 
 	rec.front_face = dot(ray.direction, outward_normal) < 0.0;
 	rec.normal = normalize(rec.front_face ? outward_normal : -outward_normal);
+	rec.material = sphere.material;
 
 	return true;
+}
+
+bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
+{
+	if(rec.material.type == MATERIAL_DIFFUSE)
+	{
+		vec3 scatter_direction = rec.normal + random_unit_vector();
+		scattered.origin = rec.point;
+		scattered.direction = normalize(scatter_direction);
+
+		scattered = Ray(scattered.origin, scattered.direction);
+		attenuation = rec.material.albedo;
+
+		return true;
+	}
+	return false;
 }
 
 vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
@@ -167,15 +186,22 @@ vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 
 		if (hit_anything)
 		{
-			// Calculate scattered ray
-			vec3 direction = closest_rec.normal + random_unit_vector();
 			Ray scattered;
-			scattered.origin = closest_rec.point;
-			scattered.direction = direction;
+			vec3 attenuation;
+			if (scatter(ray, closest_rec, attenuation, scattered))
+			{
+				accumulated_color *= attenuation; // Accumulate color
+				ray = scattered;         // Update ray for the next bounce
 
-			// Accumulate color
-			accumulated_color *= 0.5; // Attenuation factor
-			ray = scattered;         // Update ray for the next bounce
+				if(max(max(attenuation.r, attenuation.g), attenuation.b) < 0.01)
+				{
+					return vec3(0.0); // If attenuation is too low, return black
+				}
+			}
+			else
+			{
+				return vec3(0.0); // No scattering, return black
+			}
 		}
 		else
 		{
@@ -195,6 +221,7 @@ void main()
 	vec4 pixel = vec4(0.075, 0.133, 0.173, 1.0);		//random pixel colors; redundant
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 
+	// initialize the seed with the pixel coordinates for jitter free image
 	seed = uint(pixel_coords.x ^ pixel_coords.y ^ uint(gl_GlobalInvocationID.x * 1973 + gl_GlobalInvocationID.y * 9277));
 	
 	ivec2 dims = imageSize(screen);
@@ -220,10 +247,13 @@ void main()
 		Sphere sphere;
 		sphere.position=vec3(0.0, 0.0, -6.0);
 		sphere.radius=1;
+		sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0);
+
 
 		Sphere ground;
 		ground.position=vec3(0.0, -101, -6.0);
 		ground.radius=100.0;
+		ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0);
 
 		Sphere spheres[2];
 		spheres[0]=sphere;
