@@ -5,6 +5,17 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
 
+const int MATERIAL_DIFFUSE = 0;
+const int MATERIAL_METAL = 1;
+const int MATERIAL_GLASS = 2;
+
+struct Material 
+{
+	int type;
+	vec3 albedo;
+	float roughness;
+};
+
 struct Sphere
 {
 	vec3 position;
@@ -134,7 +145,7 @@ vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[2])
 {
 	vec3 accumulated_color = vec3(1.0); // Start with white light
 	vec3 final_color = vec3(0.0);       // Accumulated final color
-	int max_bounces = 15;
+	int max_bounces = 5;
 
 	for (int bounce = 0; bounce < max_bounces; bounce++)
 	{
@@ -191,7 +202,7 @@ void main()
 	float fov = 90.0;
 	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 
-	int samples_per_pixel = 15;
+	int samples_per_pixel = 10;
 	vec3 accumulated_color = vec3(0.0);
 
 	for (int i=0; i<samples_per_pixel; i++)
