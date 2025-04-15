@@ -4,6 +4,7 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
+const int MAX_SPHERES = 3;
 
 const int MATERIAL_DIFFUSE = 0;
 const int MATERIAL_METAL = 1;
@@ -177,7 +178,7 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 	return false;
 }
 
-vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[3])
+vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[MAX_SPHERES])
 {
 	vec3 accumulated_color = vec3(1.0); // Start with white light
 	vec3 final_color = vec3(0.0);       // Accumulated final color
@@ -249,6 +250,26 @@ void main()
 	int samples_per_pixel = 10;
 	vec3 accumulated_color = vec3(0.0);
 
+	Sphere sphere;
+	sphere.position=vec3(-1.0, 0.0, -6.0);
+	sphere.radius=1;
+	sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0);
+
+	Sphere ground;
+	ground.position=vec3(0.0, -101, -6.0);
+	ground.radius=100.0;
+	ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0);
+
+	Sphere metal_sphere;
+	metal_sphere.position=vec3(1.0, 0.0, -6.0);
+	metal_sphere.radius=1.0;
+	metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1);
+
+	Sphere spheres[MAX_SPHERES];
+	spheres[0]=sphere;
+	spheres[1]=ground;
+	spheres[2]=metal_sphere;
+
 	for (int i=0; i<samples_per_pixel; i++)
 	{
 		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
@@ -261,27 +282,7 @@ void main()
 		ray.origin=ray_o;
 		ray.direction=ray_d;
 
-		Sphere sphere;
-		sphere.position=vec3(-1.0, 0.0, -6.0);
-		sphere.radius=1;
-		sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0);
-
-		Sphere ground;
-		ground.position=vec3(0.0, -101, -6.0);
-		ground.radius=100.0;
-		ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0);
-
-		Sphere metal_sphere;
-		metal_sphere.position=vec3(1.0, 0.0, -6.0);
-		metal_sphere.radius=1.0;
-		metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1);
-
-		Sphere spheres[3];
-		spheres[0]=sphere;
-		spheres[1]=ground;
-		spheres[2]=metal_sphere;
-
-		accumulated_color += ray_color(ray, 3, spheres);
+		accumulated_color += ray_color(ray, MAX_SPHERES, spheres);
 	}
 
 	pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);
