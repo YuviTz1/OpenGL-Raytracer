@@ -7,11 +7,23 @@
 
 #include "shader_class.hpp"
 #include "stb_image.h"
+#include "camera.hpp"
+
+// instantiate the camera
+camera camData(90.0f);
 
 void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+        glfwSetWindowShouldClose(window, true); 
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camData.position += camData.forward * 0.001f;
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camData.position -= camData.forward * 0.001f;
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camData.position += camData.right * 0.001f;
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camData.position -= camData.right * 0.001f;
 }
 
 double previousTime = glfwGetTime();
@@ -93,21 +105,12 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)12);
     glEnableVertexAttribArray(1); 
-
-    
-    struct cameraData
-    {
-        glm::vec3 position;
-        glm::vec3 up;
-        glm::vec3 right;
-        glm::vec3 forward;
-        float fov;
-    };
+ 
 
     unsigned int cameraUBO;
     glGenBuffers(1, &cameraUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(cameraData), NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(camData), NULL, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
 
     //texture
@@ -134,12 +137,6 @@ int main()
         glUniformBlockBinding(computeShader.ID, blockIndex, 0);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
     }
-
-    // Set the camera data
-    cameraData camData;
-    camData.fov = 90.0f;
-    camData.position = glm::vec3(0.0f, 0.0f, -tan(camData.fov / 2.0));
-
 
     while (!glfwWindowShouldClose(window))
     {
@@ -168,7 +165,7 @@ int main()
         // glBindVertexArray(0);
 
         glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &camData);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camData), &camData);
 
         computeShader.use_compute(ceil(SCREEN_WIDTH / 8), ceil(SCREEN_HEIGHT / 4), 1);
 
