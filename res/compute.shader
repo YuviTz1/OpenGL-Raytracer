@@ -10,6 +10,16 @@ const int MATERIAL_DIFFUSE = 0;
 const int MATERIAL_METAL = 1;
 const int MATERIAL_GLASS = 2;
 
+//Camera uniform
+layout(std140, binding = 0) uniform cameraBlock
+{
+    vec3 cameraPos;
+    vec3 cameraFront;
+    vec3 cameraUp;
+    vec3 cameraRight;
+    float fov;
+};
+
 struct Material 
 {
 	int type;
@@ -244,10 +254,10 @@ void main()
 	
 	ivec2 dims = imageSize(screen);
 
-	float fov = 90.0;
-	vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
+	// float fov = 90.0;
+	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 
-	int samples_per_pixel = 10;
+	int samples_per_pixel = 3;
 	vec3 accumulated_color = vec3(0.0);
 
 	Sphere sphere;
@@ -276,7 +286,7 @@ void main()
         float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
-		vec3 ray_d = normalize(cam_o - ray_o);
+		vec3 ray_d = normalize(cameraPos - ray_o);
 
 		Ray ray;
 		ray.origin=ray_o;

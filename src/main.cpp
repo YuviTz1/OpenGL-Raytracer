@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp> 
 
 #include <iostream>
 #include <chrono>
@@ -93,6 +94,22 @@ int main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)12);
     glEnableVertexAttribArray(1); 
 
+    
+    struct cameraData
+    {
+        glm::vec3 position;
+        glm::vec3 up;
+        glm::vec3 right;
+        glm::vec3 forward;
+        float fov;
+    };
+
+    unsigned int cameraUBO;
+    glGenBuffers(1, &cameraUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(cameraData), NULL, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
+
     //texture
     unsigned int screenTex;
     glGenTextures(1, &screenTex);
@@ -106,6 +123,22 @@ int main()
 	glBindImageTexture(0, screenTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);   
 
     Shader computeShader("res/compute.shader");
+
+    // Get the uniform block index and bind it explicitly
+    unsigned int blockIndex = glGetUniformBlockIndex(computeShader.ID, "cameraBlock");
+    if (blockIndex == GL_INVALID_INDEX) {
+        std::cout << "Failed to find CameraBlock uniform block" << std::endl;
+    }
+    else {
+        std::cout << "Found CameraBlock at index: " << blockIndex << std::endl;
+        glUniformBlockBinding(computeShader.ID, blockIndex, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
+    }
+
+    // Set the camera data
+    cameraData camData;
+    camData.fov = 90.0f;
+    camData.position = glm::vec3(0.0f, 0.0f, -tan(camData.fov / 2.0));
 
 
     while (!glfwWindowShouldClose(window))
@@ -133,6 +166,9 @@ int main()
         // glBindVertexArray(VAO);
         // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         // glBindVertexArray(0);
+
+        glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &camData);
 
         computeShader.use_compute(ceil(SCREEN_WIDTH / 8), ceil(SCREEN_HEIGHT / 4), 1);
 
