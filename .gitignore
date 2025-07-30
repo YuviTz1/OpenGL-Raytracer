@@ -30,3 +30,24 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.VC.opendb
+
+# CMake
+build/
+out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

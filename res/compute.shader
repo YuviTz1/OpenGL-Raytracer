@@ -257,7 +257,7 @@ void main()
 	// float fov = 90.0;
 	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 
-	int samples_per_pixel = 3;
+	int samples_per_pixel = 15;
 	vec3 accumulated_color = vec3(0.0);
 
 	Sphere sphere;
