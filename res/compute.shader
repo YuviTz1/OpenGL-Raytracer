@@ -257,7 +257,7 @@ void main()
 	// float fov = 90.0;
 	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 
-	int samples_per_pixel = 15;
+	int samples_per_pixel = 5;
 	vec3 accumulated_color = vec3(0.0);
 
 	Sphere sphere;
@@ -282,8 +282,8 @@ void main()
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
-        float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);	//transforms to [-1,1]
+		float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
+        float y = float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y;	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
 		vec3 ray_d = normalize(cameraPos - ray_o);
