@@ -4,11 +4,12 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
-const int MAX_SPHERES = 3;
+const int MAX_SPHERES = 4;
 
 const int MATERIAL_DIFFUSE = 0;
 const int MATERIAL_METAL = 1;
 const int MATERIAL_GLASS = 2;
+
 
 //Camera uniform
 layout(std140, binding = 0) uniform cameraBlock
@@ -25,6 +26,7 @@ struct Material
 	int type;
 	vec3 albedo;
 	float roughness;
+	float ior;
 };
 
 struct Sphere
@@ -128,6 +130,21 @@ vec3 reflect(vec3 v, vec3 n)
     return v - 2.0 * dot(v, n) * n;
 }
 
+vec3 refract(vec3 uv, vec3 n, float etai_over_etat)
+{
+	float cos_theta = min(dot(-uv, n), 1.0);
+	vec3 r_out_perp = etai_over_etat * (uv + cos_theta*n);
+	vec3 r_out_parallel = -sqrt(abs(1.0 - dot(r_out_perp, r_out_perp))) * n;
+	return r_out_parallel + r_out_perp;
+}
+
+float schlick(float cos, float ref_idx)
+{
+	float r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+	r0 = r0 * r0;
+	return r0 + (1.0 - r0) * pow((1.0 - cos), 5.0);
+}
+
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
 	vec3 oc = ray.origin - sphere.position;
@@ -184,6 +201,29 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 		attenuation = rec.material.albedo;
 
 		return (dot(scattered.direction, rec.normal) > 0.0);
+	}
+	if(rec.material.type == MATERIAL_GLASS)
+	{
+		attenuation = vec3(1.0);
+		float etai_over_etat = rec.front_face ? (1.0 / rec.material.ior) : rec.material.ior;	//1.5 being refraction index
+		vec3 unit_direction = normalize(ray.direction);
+		float cos_theta = min(dot(-unit_direction, rec.normal), 1.0);
+		float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+		bool cannot_refract = etai_over_etat * sin_theta > 1.0;
+		vec3 direction;
+		if (cannot_refract || schlick(cos_theta, etai_over_etat) > random_float())
+		{
+			//total internal reflection
+			direction = reflect(unit_direction, rec.normal);
+		}
+		else
+		{
+			direction = refract(unit_direction, rec.normal, etai_over_etat);
+		}
+		scattered.origin = rec.point;
+		scattered.direction = normalize(direction);
+		scattered = Ray(scattered.origin, scattered.direction);
+		return true;
 	}
 	return false;
 }
@@ -257,33 +297,39 @@ void main()
 	// float fov = 90.0;
 	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
 
-	int samples_per_pixel = 3;
+	int samples_per_pixel = 5;
 	vec3 accumulated_color = vec3(0.0);
 
 	Sphere sphere;
 	sphere.position=vec3(-1.0, 0.0, -6.0);
 	sphere.radius=1;
-	sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0);
+	sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0, 1.0);
 
 	Sphere ground;
 	ground.position=vec3(0.0, -101, -6.0);
 	ground.radius=100.0;
-	ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0);
+	ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0, 1.0);
 
 	Sphere metal_sphere;
 	metal_sphere.position=vec3(1.0, 0.0, -6.0);
 	metal_sphere.radius=1.0;
-	metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1);
+	metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1, 1.0);
+
+	Sphere glass_sphere;
+	glass_sphere.position=vec3(0.0, 0.0, -4.0);
+	glass_sphere.radius=1.0;
+	glass_sphere.material = Material(MATERIAL_GLASS, vec3(1.0, 1.0, 1.0), 0.0, 1.5);
 
 	Sphere spheres[MAX_SPHERES];
 	spheres[0]=sphere;
 	spheres[1]=ground;
 	spheres[2]=metal_sphere;
+	spheres[3]=glass_sphere;
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		float x = -(float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
-        float y = -(float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y);	//transforms to [-1,1]
+		float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
+        float y = float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y;	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
 		vec3 ray_d = normalize(cameraPos - ray_o);

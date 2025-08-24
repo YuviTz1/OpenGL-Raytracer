@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 #include "shader_class.hpp"
 #include "stb_image.h"
@@ -12,18 +13,22 @@
 // instantiate the camera
 camera camData(90.0f);
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow* window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true); 
-    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camData.position += camData.forward * 0.001f;
-    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camData.position -= camData.forward * 0.001f;
-    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camData.position += camData.right * 0.001f;
-    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camData.position -= camData.right * 0.001f;
+    glm::vec3 forward = glm::normalize(camData.lookat - camData.lookfrom);
+    glm::vec3 right = glm::normalize(glm::cross(forward, camData.up));
+    float moveSpeed = 0.05f;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camData.lookfrom += forward * moveSpeed, camData.lookat += forward * moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camData.lookfrom -= forward * moveSpeed, camData.lookat -= forward * moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camData.lookfrom -= right * moveSpeed, camData.lookat -= right * moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camData.lookfrom += right * moveSpeed, camData.lookat += right * moveSpeed;
+
+    camData.updateVectors();
 }
 
 double previousTime = glfwGetTime();
@@ -31,6 +36,49 @@ int frameCount = 0;
 
 const unsigned int SCREEN_WIDTH = 1024;
 const unsigned int SCREEN_HEIGHT = 1024;
+
+float lastX = SCREEN_WIDTH / 2.0f, lastY = SCREEN_HEIGHT / 2.0f;
+float yaw = -90.0f, pitch = 0.0f;
+bool firstMouse = true;
+float radius = 6.0f; // Distance from lookat
+
+void updateCameraFromAngles() 
+{
+    // Spherical coordinates to cartesian
+    float x = radius * cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+    float y = radius * sin(glm::radians(pitch));
+    float z = radius * cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+    camData.lookfrom = camData.lookat + glm::vec3(x, y, z);
+    camData.updateVectors();
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouse)
+    {
+        lastX = float(xpos);
+        lastY = float(ypos);
+        firstMouse = false;
+    }
+
+    float xoffset = float(xpos) - lastX;
+    float yoffset = lastY - float(ypos);
+    lastX = float(xpos);
+    lastY = float(ypos);
+
+    float sensitivity = 0.05f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw -= xoffset;
+    pitch += yoffset;
+
+    // Constrain pitch
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+
+    updateCameraFromAngles();
+}
 
 int main()
 {
@@ -53,6 +101,7 @@ int main()
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     // check if GLEW is working fine
     if (glewInit() != GLEW_OK)
@@ -64,6 +113,9 @@ int main()
     glEnable(GL_DEPTH_TEST);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
 
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
+    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
 
     float vertices[] = 
     {
@@ -140,6 +192,7 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        auto frameStart = std::chrono::high_resolution_clock::now();
 
         double currentTime = glfwGetTime();
         frameCount++;
@@ -179,6 +232,18 @@ int main()
         glfwSwapBuffers(window);
         /* Poll for and process events */
         glfwPollEvents();
+
+        // Frame limiting to 60 FPS
+        auto frameEnd = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> frameDuration = frameEnd - frameStart;
+        double targetFrameTime = 1000/110;
+
+        if (frameDuration.count() < targetFrameTime)
+        {
+            std::this_thread::sleep_for(
+                std::chrono::duration<double, std::milli>(targetFrameTime - frameDuration.count())
+            );
+        }
     }
 
     glfwTerminate();
