@@ -34,8 +34,8 @@ void processInput(GLFWwindow* window)
 double previousTime = glfwGetTime();
 int frameCount = 0;
 
-const unsigned int SCREEN_WIDTH = 1024;
-const unsigned int SCREEN_HEIGHT = 1024;
+const unsigned int SCREEN_WIDTH = 1600;
+const unsigned int SCREEN_HEIGHT = 900;
 
 float lastX = SCREEN_WIDTH / 2.0f, lastY = SCREEN_HEIGHT / 2.0f;
 float yaw = -90.0f, pitch = 0.0f;

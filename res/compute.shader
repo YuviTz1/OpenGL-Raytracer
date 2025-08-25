@@ -293,6 +293,7 @@ void main()
 	seed = uint(pixel_coords.x ^ pixel_coords.y ^ uint(gl_GlobalInvocationID.x * 1973 + gl_GlobalInvocationID.y * 9277));
 	
 	ivec2 dims = imageSize(screen);
+	float aspect = float(dims.x) / float(dims.y);
 
 	// float fov = 90.0;
 	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
@@ -328,7 +329,7 @@ void main()
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x);	//transforms to [-1,1]
+		float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x) * aspect;	//transforms to [-1,1]
         float y = float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y;	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
