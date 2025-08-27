@@ -9,7 +9,6 @@ public:
     glm::vec3 up;
     glm::vec3 forward;
     glm::vec3 right;
-    glm::vec3 position;
     float fov;
 
     camera(float fov = 90.0f)
