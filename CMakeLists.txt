@@ -37,3 +37,28 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 set_target_properties(${PROJECT_NAME} PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# Set source and destination directories
+set(SHADER_SOURCE_DIR ${CMAKE_SOURCE_DIR}/res)
+set(SHADER_BUILD_DIR ${CMAKE_BINARY_DIR}/res)
+
+# Gather all shader files (add more extensions if needed)
+file(GLOB SHADER_FILES "${SHADER_SOURCE_DIR}/*.shader")
+
+# Custom command: clear build shader dir, then copy all shaders
+add_custom_command(
+    OUTPUT ${SHADER_BUILD_DIR}/.shaders_copied
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${SHADER_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADER_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${SHADER_SOURCE_DIR} ${SHADER_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E touch ${SHADER_BUILD_DIR}/.shaders_copied
+    DEPENDS ${SHADER_FILES}
+    COMMENT "Refreshing shaders in build directory"
+)
+
+add_custom_target(refresh_shaders ALL
+    DEPENDS ${SHADER_BUILD_DIR}/.shaders_copied
+)
+
+# Make your executable depend on the shaders being refreshed
+add_dependencies(${PROJECT_NAME} refresh_shaders)
