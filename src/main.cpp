@@ -12,6 +12,7 @@
 
 // instantiate the camera
 camera camData(90.0f);
+float radius = 6.0f; // Distance from lookat
 
 void processInput(GLFWwindow* window)
 {
@@ -29,6 +30,9 @@ void processInput(GLFWwindow* window)
         camData.lookfrom += right * moveSpeed, camData.lookat += right * moveSpeed;
 
     camData.updateVectors();
+
+    // Synchronize radius for consistent movement
+    radius = glm::length(camData.lookfrom - camData.lookat);
 }
 
 double previousTime = glfwGetTime();
@@ -40,7 +44,6 @@ const unsigned int SCREEN_HEIGHT = 900;
 float lastX = SCREEN_WIDTH / 2.0f, lastY = SCREEN_HEIGHT / 2.0f;
 float yaw = -90.0f, pitch = 0.0f;
 bool firstMouse = true;
-float radius = 6.0f; // Distance from lookat
 
 void updateCameraFromAngles() 
 {
