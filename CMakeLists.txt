@@ -11,8 +11,11 @@ find_package(glm REQUIRED)
 # Add source files
 set(SOURCES
     src/main.cpp
-    src/shader_class.cpp
-    src/stb_image.cpp
+    src/renderer/camera.cpp
+    src/renderer/shader_class.cpp
+    src/renderer/stb_image.cpp
+    src/renderer/renderer.cpp
+    src/engine/engine.cpp
 )
 
 # Create executable
