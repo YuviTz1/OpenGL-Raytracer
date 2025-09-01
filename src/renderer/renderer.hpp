@@ -26,9 +26,7 @@ public:
 	Renderer(int width, int height);
 	~Renderer();
 
-	static void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 	void processInput(GLFWwindow* window);
-	void updateCameraFromAngles();
 
 private:
 	int m_width;
