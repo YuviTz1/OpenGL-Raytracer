@@ -109,7 +109,7 @@ void Engine::Run(Renderer &renderer)
         // Frame limiting to 60 FPS
         auto frameEnd = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> frameDuration = frameEnd - frameStart;
-        double targetFrameTime = 1000 / 110;
+        double targetFrameTime = 1000 / 60.0f;
 
         if (frameDuration.count() < targetFrameTime)
         {

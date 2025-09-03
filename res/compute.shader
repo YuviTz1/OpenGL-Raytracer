@@ -363,18 +363,6 @@ void main()
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		/*float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x) * aspect;	//transforms to [-1,1], with aspect ratio correction
-        float y = float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y;	//transforms to [-1,1]
-
-		vec3 ray_o = vec3(x, y, 0.0);
-		vec3 ray_d = normalize(cameraPos.xyz - ray_o);
-
-		Ray ray;
-		ray.origin=ray_o;
-		ray.direction=ray_d;
-
-		accumulated_color += ray_color(ray, MAX_SPHERES, spheres);*/
-
 		vec2 offset = get_subpixel_offset(i);
         vec2 uv = (vec2(pixel_coords) + offset) / vec2(dims);
         Ray ray = createCameraRay(uv);

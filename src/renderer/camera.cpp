@@ -1,5 +1,20 @@
 #include "camera.hpp"
 
+Camera::Camera()
+    : Position(glm::vec3(0.0f, 0.0f, 0.0f)),
+    Front(glm::vec3(0.0f, 0.0f, -1.0f)),
+    Up(glm::vec3(0.0f, 1.0f, 0.0f)),
+    Right(glm::vec3(1.0f, 0.0f, 0.0f)),
+    WorldUp(glm::vec3(0.0f, 1.0f, 0.0f)),
+    Yaw(YAW),
+    Pitch(PITCH),
+    MovementSpeed(SPEED),
+    MouseSensitivity(SENSITIVITY),
+    Zoom(ZOOM)
+{
+    updateCameraVectors();
+}
+
 Camera::Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH)
     : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
 {
