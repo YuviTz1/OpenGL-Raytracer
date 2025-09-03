@@ -7,7 +7,7 @@
 #include "camera.hpp"
 
 Renderer::Renderer(int width, int height)
-	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), m_camData(90.0f)
+	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader")
 {
 	InitCameraUBO();
     InitScreenTexture();
@@ -74,7 +74,7 @@ void Renderer::InitCameraUBO()
     unsigned int cameraUBO;
     glGenBuffers(1, &cameraUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(m_camData), NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), NULL, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
 	m_cameraUBO = cameraUBO;
 }
@@ -93,24 +93,61 @@ void Renderer::InitComputeShader()
     }
 }
 
+// Mouse callback function
+void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    if (!renderer) return;
+
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (renderer->camera_firstMouse)
+    {
+        renderer->camera_lastX = xpos;
+        renderer->camera_lastY = ypos;
+        renderer->camera_firstMouse = false;
+    }
+
+    float xoffset = xpos - renderer->camera_lastX;
+    float yoffset = renderer->camera_lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+    renderer->camera_lastX = xpos;
+    renderer->camera_lastY = ypos;
+
+    renderer->camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+// Scroll callback function
+void Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    //camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
 void Renderer::processInput(GLFWwindow* window)
 {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
 
-    glm::vec3 forward = glm::normalize(m_camData.lookat - m_camData.lookfrom);
-    glm::vec3 right = glm::normalize(glm::cross(forward, m_camData.up));
-    float moveSpeed = 0.05f;
+    bool cameraChanged = false;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        m_camData.lookfrom += forward * moveSpeed, m_camData.lookat += forward * moveSpeed;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        m_camData.lookfrom -= forward * moveSpeed, m_camData.lookat -= forward * moveSpeed;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        m_camData.lookfrom -= right * moveSpeed, m_camData.lookat -= right * moveSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        m_camData.lookfrom += right * moveSpeed, m_camData.lookat += right * moveSpeed;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+        cameraChanged = true;
+    }
 
-    m_camData.updateVectors();
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+        cameraChanged = true;
+    }
 
-    // Synchronize radius for consistent movement
-    camera_radius = glm::length(m_camData.lookfrom - m_camData.lookat);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        camera.ProcessKeyboard(LEFT, deltaTime);
+        cameraChanged = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+        cameraChanged = true;
+    }
 }

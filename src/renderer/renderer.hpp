@@ -2,6 +2,15 @@
 #include "shader_class.hpp"
 #include "camera.hpp"
 
+struct CameraData {
+	glm::vec4 position;
+	glm::vec4 front;
+	glm::vec4 up;
+	glm::vec4 right;
+	glm::vec2 fovAndAspect;
+	glm::vec2 padding;
+};
+
 class Renderer
 {
 public:
@@ -10,7 +19,8 @@ public:
 	unsigned int m_VAO = NULL;
 	unsigned int m_cameraUBO = NULL;
 	unsigned int m_screenTex = NULL;
-	camera m_camData;
+	Camera camera;
+	float deltaTime = 0.0f;
 
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!
@@ -26,6 +36,8 @@ public:
 	Renderer(int width, int height);
 	~Renderer();
 
+	void static mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
+	void static scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	void processInput(GLFWwindow* window);
 
 private:

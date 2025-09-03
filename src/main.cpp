@@ -23,6 +23,15 @@ int main()
     //glfwSetCursorPosCallback(engine.m_window, Renderer::mouse_callback);
     //glfwSetWindowUserPointer(engine.m_window, &renderer);
 
+    glfwMakeContextCurrent(engine.m_window);
+
+    // Set callbacks
+    glfwSetCursorPosCallback(engine.m_window, Renderer::mouse_callback);
+    glfwSetScrollCallback(engine.m_window, Renderer::scroll_callback);
+
+    // Capture mouse
+    glfwSetInputMode(engine.m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 	engine.Run(renderer);
     return 0;
 }

@@ -63,6 +63,17 @@ void Engine::Run(Renderer &renderer)
         auto frameStart = std::chrono::high_resolution_clock::now();
 
         double currentTime = glfwGetTime();
+        float deltaTime = currentTime - m_previousTime;
+		float aspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+
+        CameraData cameraData;
+        cameraData.position = glm::vec4(renderer.camera.Position, 1.0f);
+        cameraData.front = glm::vec4(renderer.camera.Front, 0.0f);
+        cameraData.up = glm::vec4(renderer.camera.Up, 0.0f);
+        cameraData.right = glm::vec4(renderer.camera.Right, 0.0f);
+        cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
+        cameraData.padding = glm::vec2(0.0f);
+
         m_frameCount++;
         // If a second has passed.
         if (currentTime - m_previousTime >= 1.0)
@@ -77,10 +88,11 @@ void Engine::Run(Renderer &renderer)
         // clear screen with specified color
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0782, 0.0782, 0.0782, 1);
+		renderer.deltaTime = deltaTime;
         renderer.processInput(m_window);
 
         glBindBuffer(GL_UNIFORM_BUFFER, renderer.m_cameraUBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(renderer.m_camData), &renderer.m_camData);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &cameraData);
         renderer.m_computeShader.use_compute(ceil(m_width / 8), ceil(m_height / 4), 1);
         renderer.m_QuadShader.use();
         glBindTextureUnit(0, renderer.m_screenTex);
