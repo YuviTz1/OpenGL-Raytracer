@@ -97,7 +97,11 @@ void Renderer::InitComputeShader()
 void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
     Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
-    if (!renderer) return;
+    if (!renderer)
+    {
+		std::cout << "Renderer pointer is null in mouse_callback" << std::endl;
+        return;
+    }
 
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);

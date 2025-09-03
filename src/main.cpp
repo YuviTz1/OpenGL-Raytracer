@@ -20,8 +20,7 @@ int main()
     Engine engine(SCREEN_WIDTH, SCREEN_HEIGHT, "Compute Shader Engine");
 	Renderer renderer(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    //glfwSetCursorPosCallback(engine.m_window, Renderer::mouse_callback);
-    //glfwSetWindowUserPointer(engine.m_window, &renderer);
+    glfwSetWindowUserPointer(engine.m_window, &renderer);
 
     glfwMakeContextCurrent(engine.m_window);
 

@@ -49,6 +49,23 @@ vec3 ray_at(float t, Ray ray)
 	return ray.origin + t*ray.direction;
 }
 
+Ray createCameraRay(vec2 uv)
+{
+    //Convert UV from [0,1] to [-1,1] and apply aspect ratio correction
+    vec2 ndc = uv * 2.0 - 1.0;
+    ndc.x *= fovAndAspect.y;
+    float tanFov = tan(fovAndAspect.x * 0.5);
+
+    //Create camera space vectors
+    vec3 rayDir = normalize(
+        cameraFront.xyz +
+        ndc.x * tanFov * cameraRight.xyz +
+        ndc.y * tanFov * cameraUp.xyz
+    );
+
+    return Ray(cameraPos.xyz, rayDir);
+}
+
 struct HitRecord
 {
 	vec3 point;
@@ -114,6 +131,22 @@ vec3 random_on_hemisphere(vec3 normal)
 	{
 		return -on_unit_sphere;
 	}
+}
+
+vec2 random_in_unit_square()
+{
+    return vec2(random_float(), random_float());
+}
+
+vec2 get_subpixel_offset(int sampleIdx)
+{
+    int x = sampleIdx % 2;
+    int y = sampleIdx / 2;
+
+    vec2 stratifiedPos = vec2(x, y) * 0.5;
+    vec2 jitter = random_in_unit_square() * 0.5;
+
+    return stratifiedPos + jitter;
 }
 
 vec3 linear_to_gamma(vec3 color)
@@ -330,7 +363,7 @@ void main()
 
 	for (int i=0; i<samples_per_pixel; i++)
 	{
-		float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x) * aspect;	//transforms to [-1,1], with aspect ratio correction
+		/*float x = (float((pixel_coords.x + random_float()) * 2 - dims.x) / dims.x) * aspect;	//transforms to [-1,1], with aspect ratio correction
         float y = float((pixel_coords.y + random_float()) * 2 - dims.y) / dims.y;	//transforms to [-1,1]
 
 		vec3 ray_o = vec3(x, y, 0.0);
@@ -340,7 +373,13 @@ void main()
 		ray.origin=ray_o;
 		ray.direction=ray_d;
 
-		accumulated_color += ray_color(ray, MAX_SPHERES, spheres);
+		accumulated_color += ray_color(ray, MAX_SPHERES, spheres);*/
+
+		vec2 offset = get_subpixel_offset(i);
+        vec2 uv = (vec2(pixel_coords) + offset) / vec2(dims);
+        Ray ray = createCameraRay(uv);
+
+        accumulated_color += ray_color(ray, MAX_SPHERES, spheres);
 	}
 
 	pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);
