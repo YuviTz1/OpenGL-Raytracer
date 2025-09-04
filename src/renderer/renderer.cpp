@@ -5,6 +5,7 @@
 #include "stb_image.h"
 #include "renderer.hpp"
 #include "camera.hpp"
+#include "imgui.h"
 
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader")
@@ -81,7 +82,6 @@ void Renderer::InitCameraUBO()
 
 void Renderer::InitComputeShader()
 {
-    // Get the uniform block index and bind it explicitly
     unsigned int blockIndex = glGetUniformBlockIndex(m_computeShader.ID, "cameraBlock");
     if (blockIndex == GL_INVALID_INDEX) {
         std::cout << "Failed to find CameraBlock uniform block" << std::endl;
@@ -93,9 +93,12 @@ void Renderer::InitComputeShader()
     }
 }
 
-// Mouse callback function
 void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+    // Skip if ImGui wants the mouse
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
     Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
     if (!renderer)
     {
@@ -114,7 +117,7 @@ void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     }
 
     float xoffset = xpos - renderer->camera_lastX;
-    float yoffset = renderer->camera_lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float yoffset = renderer->camera_lastY - ypos;
 
     renderer->camera_lastX = xpos;
     renderer->camera_lastY = ypos;
@@ -122,36 +125,37 @@ void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     renderer->camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// Scroll callback function
 void Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
+    // Skip if ImGui wants the mouse wheel
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
     //camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 void Renderer::processInput(GLFWwindow* window)
 {
+    // Skip if ImGui wants the keyboard
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
+
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    bool cameraChanged = false;
-
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         camera.ProcessKeyboard(FORWARD, deltaTime);
-        cameraChanged = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         camera.ProcessKeyboard(BACKWARD, deltaTime);
-        cameraChanged = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         camera.ProcessKeyboard(LEFT, deltaTime);
-        cameraChanged = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.ProcessKeyboard(RIGHT, deltaTime);
-        cameraChanged = true;
     }
 }

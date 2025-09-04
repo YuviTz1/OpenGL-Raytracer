@@ -8,6 +8,25 @@ find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 
+# ImGui
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/src/vendor)
+add_library(imgui STATIC
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+    # ${IMGUI_DIR}/imgui_demo.cpp  # optional
+)
+target_include_directories(imgui PUBLIC
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+)
+# Use GLEW as the GL loader for ImGui OpenGL3 backend
+target_compile_definitions(imgui PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
+target_link_libraries(imgui PUBLIC glfw GLEW::GLEW opengl32)
+
 # Add source files
 set(SOURCES
     src/main.cpp
@@ -22,11 +41,12 @@ set(SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} 
+target_link_libraries(${PROJECT_NAME}
     glfw
     GLEW::GLEW
     glm::glm
     opengl32
+    imgui
 )
 
 # Copy the entire res directory to the output directory

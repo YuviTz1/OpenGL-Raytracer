@@ -329,9 +329,6 @@ void main()
 	ivec2 dims = imageSize(screen);
 	float aspect = float(dims.x) / float(dims.y);
 
-	// float fov = 90.0;
-	// vec3 cam_o = vec3(0.0, 0.0, -tan(fov / 2.0));
-
 	int samples_per_pixel = 5;
 	vec3 accumulated_color = vec3(0.0);
 

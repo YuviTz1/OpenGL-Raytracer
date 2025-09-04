@@ -8,6 +8,11 @@
 #include "../renderer/camera.hpp"
 #include "../renderer/renderer.hpp"
 
+// ImGui
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+
 Engine::Engine(int width, int height, std::string title)
 	: m_width(width), m_height(height), m_title(title)
 {
@@ -16,6 +21,11 @@ Engine::Engine(int width, int height, std::string title)
 
 Engine::~Engine()
 {
+    // ImGui shutdown
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glfwTerminate();
 }
 
@@ -47,11 +57,22 @@ void Engine::InitGLResources()
 
     glViewport(0, 0, m_width, m_height);
     glEnable(GL_DEPTH_TEST);
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
 
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
     std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+
+    // ImGui init
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+
+    // Use modern GLSL for backend shaders
+    const char* glsl_version = "#version 460";
+    // Do NOT install callbacks to avoid interfering with your own
+    ImGui_ImplGlfw_InitForOpenGL(window, false);
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
     m_window = window;
 }
@@ -75,24 +96,36 @@ void Engine::Run(Renderer &renderer)
         cameraData.padding = glm::vec2(0.0f);
 
         m_frameCount++;
-        // If a second has passed.
         if (currentTime - m_previousTime >= 1.0)
         {
-            // Display the frame count here any way you want.
             std::cout << "FPS: " << m_frameCount << std::endl;
-
             m_frameCount = 0;
             m_previousTime = currentTime;
         }
 
-        // clear screen with specified color
+        glfwPollEvents();
+
+        // Start ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Example UI
+        ImGui::Begin("Stats");
+        ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
+        ImGui::SliderFloat("FOV", &renderer.camera.Zoom, 20.0f, 90.0f);
+        ImGui::End();
+
+        // clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0782, 0.0782, 0.0782, 1);
+        glClearColor(0.0782f, 0.0782f, 0.0782f, 1.0f);
+
 		renderer.deltaTime = deltaTime;
         renderer.processInput(m_window);
 
         glBindBuffer(GL_UNIFORM_BUFFER, renderer.m_cameraUBO);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &cameraData);
+
         renderer.m_computeShader.use_compute(ceil(m_width / 8), ceil(m_height / 4), 1);
         renderer.m_QuadShader.use();
         glBindTextureUnit(0, renderer.m_screenTex);
@@ -101,10 +134,11 @@ void Engine::Run(Renderer &renderer)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // Swap front and back buffers
+        // ImGui render (after your scene)
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(m_window);
-        // Poll for and process events
-        glfwPollEvents();
 
         // Frame limiting to 60 FPS
         auto frameEnd = std::chrono::high_resolution_clock::now();
