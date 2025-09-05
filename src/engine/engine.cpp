@@ -8,8 +8,9 @@
 #include "../renderer/camera.hpp"
 #include "../renderer/renderer.hpp"
 
-Engine::Engine(int width, int height, std::string title)
-	: m_width(width), m_height(height), m_title(title)
+Engine::Engine(int renderWidth, int renderHeight, std::string title)
+	: m_renderWidth(renderWidth), m_renderHeight(renderHeight), m_title(title),
+	  m_windowWidth(renderWidth), m_windowHeight(renderHeight)
 {
 	m_ui_handler = new UI_handler();
 	InitGLResources();
@@ -17,108 +18,157 @@ Engine::Engine(int width, int height, std::string title)
 
 Engine::~Engine()
 {
-    glfwTerminate();
+	glfwTerminate();
 }
 
 void Engine::InitGLResources()
 {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwSwapInterval(0);
+	if (!glfwInit())
+	{
+		std::cout << "Failed to init GLFW\n";
+		return;
+	}
 
-    GLFWwindow* window;
-    window = glfwCreateWindow(m_width, m_height, m_title.c_str(), NULL, NULL);
-    if (!window)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return;
-    }
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);     // Borderless
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);     // Fixed size (monitor)
+	glfwSwapInterval(0);
 
-    /* Make the window's context current */
-    glfwMakeContextCurrent(window);
+	// Query primary monitor size
+	GLFWmonitor* primary = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primary);
+	if (mode)
+	{
+		m_windowWidth = mode->width;
+		m_windowHeight = mode->height;
+	}
+	else
+	{
+		std::cout << "Failed to get monitor video mode, falling back to render size.\n";
+		m_windowWidth = m_renderWidth;
+		m_windowHeight = m_renderHeight;
+	}
 
-    // check if GLEW is working fine
-    if (glewInit() != GLEW_OK)
-    {
-        std::cout << "GLEW init error" << std::endl;
-    }
+	GLFWwindow* window = glfwCreateWindow(m_windowWidth, m_windowHeight, m_title.c_str(), NULL, NULL);
+	if (!window)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return;
+	}
 
-    glViewport(0, 0, m_width, m_height);
-    glEnable(GL_DEPTH_TEST);
+	glfwMakeContextCurrent(window);
 
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
-    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+	if (glewInit() != GLEW_OK)
+	{
+		std::cout << "GLEW init error" << std::endl;
+	}
+
+	// Full window viewport for clears/UI
+	glViewport(0, 0, m_windowWidth, m_windowHeight);
+	glEnable(GL_DEPTH_TEST);
+
+	std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+	std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
+	std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
 
 	m_ui_handler->init(window);
-    m_window = window;
+	m_window = window;
+
+	// Place window at (0,0) on the primary monitor (optional)
+	//glfwSetWindowPos(window, 0, 0);
 }
 
 void Engine::Run(Renderer &renderer)
 {
-    while(!glfwWindowShouldClose(m_window))
-    {
-        auto frameStart = std::chrono::high_resolution_clock::now();
+	while (!glfwWindowShouldClose(m_window))
+	{
+		auto frameStart = std::chrono::high_resolution_clock::now();
 
-        double currentTime = glfwGetTime();
-        float deltaTime = currentTime - m_previousTime;
-		float aspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+		double currentTime = glfwGetTime();
+		float deltaTime = static_cast<float>(currentTime - m_previousTime);
+		float aspect = static_cast<float>(m_renderWidth) / static_cast<float>(m_renderHeight);
 
-        CameraData cameraData;
-        cameraData.position = glm::vec4(renderer.camera.Position, 1.0f);
-        cameraData.front = glm::vec4(renderer.camera.Front, 0.0f);
-        cameraData.up = glm::vec4(renderer.camera.Up, 0.0f);
-        cameraData.right = glm::vec4(renderer.camera.Right, 0.0f);
-        cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
-        cameraData.padding = glm::vec2(0.0f);
+		// Camera UBO data uses render (compute) resolution aspect
+		CameraData cameraData;
+		cameraData.position = glm::vec4(renderer.camera.Position, 1.0f);
+		cameraData.front = glm::vec4(renderer.camera.Front, 0.0f);
+		cameraData.up = glm::vec4(renderer.camera.Up, 0.0f);
+		cameraData.right = glm::vec4(renderer.camera.Right, 0.0f);
+		cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
+		cameraData.padding = glm::vec2(0.0f);
 
-        m_frameCount++;
-        if (currentTime - m_previousTime >= 1.0)
-        {
-            std::cout << "FPS: " << m_frameCount << std::endl;
-            m_frameCount = 0;
-            m_previousTime = currentTime;
-        }
+		m_frameCount++;
+		if (currentTime - m_previousTime >= 1.0)
+		{
+			std::cout << "FPS: " << m_frameCount << std::endl;
+			m_frameCount = 0;
+			m_previousTime = currentTime;
+		}
 
-        glfwPollEvents();
+		glfwPollEvents();
 
-        m_ui_handler->example_ui(renderer.deltaTime, &cameraData.fovAndAspect.x);
+		m_ui_handler->example_ui(renderer.deltaTime, &cameraData.fovAndAspect.x);
 
-        // clear screen
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0782f, 0.0782f, 0.0782f, 1.0f);
+		// Query actual framebuffer size (handles HiDPI)
+		int fbW, fbH;
+		glfwGetFramebufferSize(m_window, &fbW, &fbH);
+
+		// Clear full window
+		glViewport(0, 0, fbW, fbH);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0.0782f, 0.0782f, 0.0782f, 1.0f);
 
 		renderer.deltaTime = deltaTime;
-        renderer.processInput(m_window);
+		renderer.processInput(m_window);
 
-        glBindBuffer(GL_UNIFORM_BUFFER, renderer.m_cameraUBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &cameraData);
+		glBindBuffer(GL_UNIFORM_BUFFER, renderer.m_cameraUBO);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(cameraData), &cameraData);
 
-        renderer.m_computeShader.use_compute(ceil(m_width / 8), ceil(m_height / 4), 1);
-        renderer.m_QuadShader.use();
-        glBindTextureUnit(0, renderer.m_screenTex);
-        renderer.m_QuadShader.setInt("screen", 0);
-        glBindVertexArray(renderer.m_VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+		// Dispatch compute for the fixed render texture size
+		const int localSizeX = 8;
+		const int localSizeY = 4;
+		int groupCountX = (m_renderWidth + localSizeX - 1) / localSizeX;
+		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
+		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
-        m_ui_handler->render();
+		// Center the render texture inside the larger window
+		int xOffset = (fbW - m_renderWidth) / 2;
+		int yOffset = (fbH - m_renderHeight) / 2;
+		if (xOffset < 0) xOffset = 0;
+		if (yOffset < 0) yOffset = 0;
 
-        glfwSwapBuffers(m_window);
+		glViewport(xOffset, yOffset, m_renderWidth, m_renderHeight);
 
-        // Frame limiting to 60 FPS
-        auto frameEnd = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> frameDuration = frameEnd - frameStart;
-        double targetFrameTime = 1000 / 60.0f;
+		renderer.m_QuadShader.use();
+		glBindTextureUnit(0, renderer.m_screenTex);
+		renderer.m_QuadShader.setInt("screen", 0);
+		glBindVertexArray(renderer.m_VAO);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
 
-        if (frameDuration.count() < targetFrameTime)
-        {
-            std::this_thread::sleep_for(
-                std::chrono::duration<double, std::milli>(targetFrameTime - frameDuration.count())
-            );
-        }
+		// Restore viewport for ImGui overlay
+		glViewport(0, 0, fbW, fbH);
+		m_ui_handler->render();
+
+		glfwSwapBuffers(m_window);
+
+		// Frame limiting (60 FPS)
+		auto frameEnd = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> frameDuration = frameEnd - frameStart;
+		const double targetFrameTime = 1000.0 / 60.0;
+		if (frameDuration.count() < targetFrameTime)
+		{
+			std::this_thread::sleep_for(
+				std::chrono::duration<double, std::milli>(targetFrameTime - frameDuration.count())
+			);
+		}
 	}
+}
+
+void Engine::Resize(int width, int height)
+{
+	// (Unused in this scenario; kept for future windowed-resize logic)
 }
