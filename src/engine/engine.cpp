@@ -8,24 +8,15 @@
 #include "../renderer/camera.hpp"
 #include "../renderer/renderer.hpp"
 
-// ImGui
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
 Engine::Engine(int width, int height, std::string title)
 	: m_width(width), m_height(height), m_title(title)
 {
+	m_ui_handler = new UI_handler();
 	InitGLResources();
 }
 
 Engine::~Engine()
 {
-    // ImGui shutdown
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
     glfwTerminate();
 }
 
@@ -62,18 +53,7 @@ void Engine::InitGLResources()
     std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
     std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
 
-    // ImGui init
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark();
-
-    // Use modern GLSL for backend shaders
-    const char* glsl_version = "#version 460";
-    // Do NOT install callbacks to avoid interfering with your own
-    ImGui_ImplGlfw_InitForOpenGL(window, false);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
+	m_ui_handler->init(window);
     m_window = window;
 }
 
@@ -105,16 +85,7 @@ void Engine::Run(Renderer &renderer)
 
         glfwPollEvents();
 
-        // Start ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // Example UI
-        ImGui::Begin("Stats");
-        ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
-        ImGui::SliderFloat("FOV", &renderer.camera.Zoom, 20.0f, 90.0f);
-        ImGui::End();
+        m_ui_handler->example_ui(renderer.deltaTime, &cameraData.fovAndAspect.x);
 
         // clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -134,9 +105,7 @@ void Engine::Run(Renderer &renderer)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        // ImGui render (after your scene)
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        m_ui_handler->render();
 
         glfwSwapBuffers(m_window);
 

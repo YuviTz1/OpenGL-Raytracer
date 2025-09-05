@@ -34,6 +34,7 @@ set(SOURCES
     src/renderer/stb_image.cpp
     src/renderer/renderer.cpp
     src/engine/engine.cpp
+    src/engine/ui_handler.cpp
 )
 
 # Create executable

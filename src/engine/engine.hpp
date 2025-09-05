@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "ui_handler.hpp"
 
 struct Renderer;
 
@@ -7,6 +8,7 @@ class Engine
 {
 public:
 	GLFWwindow* m_window;
+	UI_handler* m_ui_handler;
 
 	Engine(int width, int height, std::string title);
 	~Engine();
