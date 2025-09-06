@@ -1,6 +1,8 @@
 #pragma once
 #include "shader_class.hpp"
 #include "camera.hpp"
+#include "sphere.hpp"
+#include <vector>
 
 struct CameraData {
 	glm::vec4 position;
@@ -22,6 +24,8 @@ public:
 	Camera camera;
 	float deltaTime = 0.0f;
 	int m_frameCount;
+	std::vector<Sphere> m_spheres;
+
 
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!

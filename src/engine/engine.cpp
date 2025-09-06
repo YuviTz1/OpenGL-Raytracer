@@ -106,16 +106,6 @@ void Engine::Run(Renderer &renderer)
 		cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
 		cameraData.padding = glm::vec2(0.0f);
 
-		// FPS counter (decoupled from per-frame delta)
-		m_frameCount++;
-		if (frameStart - fpsTimerStart >= 1.0)
-		{
-			std::cout << "FPS: " << m_frameCount << std::endl;
-			renderer.m_frameCount = m_frameCount;
-			m_frameCount = 0;
-			fpsTimerStart = frameStart;
-		}
-
 		glfwPollEvents();
 
 		// Query actual framebuffer size (handles HiDPI)
@@ -185,17 +175,27 @@ void Engine::Run(Renderer &renderer)
 
 		glfwSwapBuffers(m_window);
 
-		// Frame limiting (sleep based on glfw time)
-		double frameEnd = glfwGetTime();
-		double frameDuration = frameEnd - frameStart;
-		if (frameDuration < targetFrameTime)
+		// FPS counter (decoupled from per-frame delta)
+		m_frameCount++;
+		if (frameStart - fpsTimerStart >= 1.0)
 		{
-			double sleepSeconds = targetFrameTime - frameDuration;
-			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
+			std::cout << "FPS: " << m_frameCount << std::endl;
+			renderer.m_frameCount = m_frameCount;
+			m_frameCount = 0;
+			fpsTimerStart = frameStart;
 		}
 
-		// Persist last frame start in member (in case Run() is ever re-entered)
-		m_previousTime = lastFrameStart;
+		// Frame limiting (sleep based on glfw time)
+		//double frameEnd = glfwGetTime();
+		//double frameDuration = frameEnd - frameStart;
+		//if (frameDuration < targetFrameTime)
+		//{
+		//	double sleepSeconds = targetFrameTime - frameDuration;
+		//	std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
+		//}
+
+		//// Persist last frame start in member (in case Run() is ever re-entered)
+		//m_previousTime = lastFrameStart;
 	}
 }
 

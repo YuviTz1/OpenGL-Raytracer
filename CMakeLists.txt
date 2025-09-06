@@ -35,6 +35,8 @@ set(SOURCES
     src/renderer/renderer.cpp
     src/engine/engine.cpp
     src/engine/ui_handler.cpp
+    src/renderer/sphere.cpp
+    src/renderer/material.cpp
 )
 
 # Create executable
