@@ -83,12 +83,18 @@ void Engine::InitGLResources()
 
 void Engine::Run(Renderer &renderer)
 {
+	// Use glfwGetTime consistently for all timing (delta, FPS, frame cap).
+	double lastFrameStart = m_previousTime;     // m_previousTime seeded in ctor (initialized with glfwGetTime()).
+	double fpsTimerStart = m_previousTime;
+
+	const double targetFrameTime = 1.0 / 60.0;  // 60 FPS cap
+
 	while (!glfwWindowShouldClose(m_window))
 	{
-		auto frameStart = std::chrono::high_resolution_clock::now();
+		double frameStart = glfwGetTime();
+		float deltaTime = static_cast<float>(frameStart - lastFrameStart);
+		lastFrameStart = frameStart;
 
-		double currentTime = glfwGetTime();
-		float deltaTime = static_cast<float>(currentTime - m_previousTime);
 		float aspect = static_cast<float>(m_renderWidth) / static_cast<float>(m_renderHeight);
 
 		// Camera UBO data uses render (compute) resolution aspect
@@ -100,13 +106,14 @@ void Engine::Run(Renderer &renderer)
 		cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
 		cameraData.padding = glm::vec2(0.0f);
 
+		// FPS counter (decoupled from per-frame delta)
 		m_frameCount++;
-		if (currentTime - m_previousTime >= 1.0)
+		if (frameStart - fpsTimerStart >= 1.0)
 		{
 			std::cout << "FPS: " << m_frameCount << std::endl;
 			renderer.m_frameCount = m_frameCount;
 			m_frameCount = 0;
-			m_previousTime = currentTime;
+			fpsTimerStart = frameStart;
 		}
 
 		glfwPollEvents();
@@ -178,16 +185,17 @@ void Engine::Run(Renderer &renderer)
 
 		glfwSwapBuffers(m_window);
 
-		// Frame limiting (60 FPS)
-		auto frameEnd = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> frameDuration = frameEnd - frameStart;
-		const double targetFrameTime = 1000.0 / 60.0;
-		if (frameDuration.count() < targetFrameTime)
+		// Frame limiting (sleep based on glfw time)
+		double frameEnd = glfwGetTime();
+		double frameDuration = frameEnd - frameStart;
+		if (frameDuration < targetFrameTime)
 		{
-			std::this_thread::sleep_for(
-				std::chrono::duration<double, std::milli>(targetFrameTime - frameDuration.count())
-			);
+			double sleepSeconds = targetFrameTime - frameDuration;
+			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
 		}
+
+		// Persist last frame start in member (in case Run() is ever re-entered)
+		m_previousTime = lastFrameStart;
 	}
 }
 
