@@ -21,6 +21,7 @@ public:
 	unsigned int m_screenTex = NULL;
 	Camera camera;
 	float deltaTime = 0.0f;
+	int m_frameCount;
 
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!

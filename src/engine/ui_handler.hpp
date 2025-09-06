@@ -27,7 +27,11 @@ public:
 	void right_sidebar(float deltaTime, float* zoom,
 		float renderStartX, float renderWidth, float windowWidth);
 
-	//bottom bar: spans between left / right sidebars across render area.
-		void bottom_bar(float deltaTime, float* zoom,
-			float renderStartX, float renderWidth, float bottomBarHeight);
+	// Bottom bar: with render stats
+	void bottom_bar(float fps, float* zoom,
+		float renderStartX, float renderWidth, float bottomBarHeight,
+		int viewportWidth, int viewportHeight,
+		int windowWidth, int windowHeight,
+		int samplesPerPixel, int maxBounce,
+		int localSizeX, int localSizeY, int localSizeZ);
 };

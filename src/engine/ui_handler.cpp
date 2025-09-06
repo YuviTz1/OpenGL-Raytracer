@@ -80,12 +80,15 @@ void UI_handler::right_sidebar(float deltaTime, float* zoom,
 	ImGui::Separator();
 	ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
 	ImGui::SliderFloat("FOV (Right)", zoom, 20.0f, 90.0f);
-	// Add additional right panel controls here
 	ImGui::End();
 }
 
-void UI_handler::bottom_bar(float deltaTime, float* zoom,
-	float renderStartX, float renderWidth, float bottomBarHeight)
+void UI_handler::bottom_bar(float fps, float* zoom,
+	float renderStartX, float renderWidth, float bottomBarHeight,
+	int viewportWidth, int viewportHeight,
+	int windowWidth, int windowHeight,
+	int samplesPerPixel, int maxBounce,
+	int localSizeX, int localSizeY, int localSizeZ)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	float barH = std::max(0.0f, bottomBarHeight);
@@ -110,11 +113,18 @@ void UI_handler::bottom_bar(float deltaTime, float* zoom,
 		ImGuiWindowFlags_NoNavFocus;
 
 	ImGui::Begin("BottomBar", nullptr, flags);
-	ImGui::Text("Bottom Bar");
+	ImGui::Text("Render Stats");
 	ImGui::Separator();
-	ImGui::Text("Viewport Width: %.0f", width);
-	ImGui::Text("Delta: %.3f ms", 1000.0f * deltaTime);
-	ImGui::SliderFloat("FOV (Bottom)", zoom, 20.0f, 90.0f);
+
+	float clampedFPS = std::max(0.00001f, fps);
+	float frameTimeMs = 1000.0f / clampedFPS;
+
+	ImGui::Text("Viewport: %d x %d", viewportWidth, viewportHeight);
+	ImGui::Text("Window:   %d x %d", windowWidth, windowHeight);
+	ImGui::Text("Frame: %.2f ms (%.1f FPS)", frameTimeMs, clampedFPS);
+	ImGui::Text("Samples Per Pixel: %d  | Max Bounce: %d", samplesPerPixel, maxBounce);
+	ImGui::Text("Work Group Size: %d x %d x %d", localSizeX, localSizeY, localSizeZ);
+
 	ImGui::End();
 }
 

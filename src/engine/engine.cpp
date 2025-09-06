@@ -104,6 +104,7 @@ void Engine::Run(Renderer &renderer)
 		if (currentTime - m_previousTime >= 1.0)
 		{
 			std::cout << "FPS: " << m_frameCount << std::endl;
+			renderer.m_frameCount = m_frameCount;
 			m_frameCount = 0;
 			m_previousTime = currentTime;
 		}
@@ -128,6 +129,7 @@ void Engine::Run(Renderer &renderer)
 		// Dispatch compute for the fixed render texture size
 		const int localSizeX = 8;
 		const int localSizeY = 4;
+		const int localSizeZ = 1;
 		int groupCountX = (m_renderWidth + localSizeX - 1) / localSizeX;
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
@@ -153,11 +155,15 @@ void Engine::Run(Renderer &renderer)
 			static_cast<float>(xOffset),
 			static_cast<float>(m_renderWidth),
 			static_cast<float>(fbW));
-		// Bottom bar spans unused vertical gap under the render viewport
-		m_ui_handler->bottom_bar(deltaTime, &renderer.camera.Zoom,
+		// Bottom bar with extended stats
+		m_ui_handler->bottom_bar(renderer.m_frameCount, &renderer.camera.Zoom,
 			static_cast<float>(xOffset),
 			static_cast<float>(m_renderWidth),
-			bottomBarHeight);
+			bottomBarHeight,
+			m_renderWidth, m_renderHeight,   // viewport (render target) size
+			fbW, fbH,                        // window/framebuffer size
+			5, 5,                            // samples per pixel, max bounce (hardcoded)
+			groupCountX, groupCountY, localSizeZ);
 
 		renderer.m_QuadShader.use();
 		glBindTextureUnit(0, renderer.m_screenTex);
