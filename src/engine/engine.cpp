@@ -110,8 +110,6 @@ void Engine::Run(Renderer &renderer)
 
 		glfwPollEvents();
 
-		m_ui_handler->example_ui(renderer.deltaTime, &cameraData.fovAndAspect.x);
-
 		// Query actual framebuffer size (handles HiDPI)
 		int fbW, fbH;
 		glfwGetFramebufferSize(m_window, &fbW, &fbH);
@@ -134,13 +132,32 @@ void Engine::Run(Renderer &renderer)
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
-		// Center the render texture inside the larger window
+		// Center horizontally, align to top vertically.
+		// OpenGL origin is bottom-left, so top alignment => y = fbH - renderHeight.
 		int xOffset = (fbW - m_renderWidth) / 2;
-		int yOffset = (fbH - m_renderHeight) / 2;
 		if (xOffset < 0) xOffset = 0;
+
+		int yOffset = fbH - m_renderHeight;
 		if (yOffset < 0) yOffset = 0;
 
 		glViewport(xOffset, yOffset, m_renderWidth, m_renderHeight);
+
+		// Dynamic bottom bar height: fills the space between bottom of render viewport and bottom of window.
+		float bottomBarHeight = static_cast<float>(yOffset);
+		if (bottomBarHeight < 0.0f) bottomBarHeight = 0.0f;
+
+		// Left sidebar spans [0, xOffset)
+		m_ui_handler->left_sidebar(deltaTime, &renderer.camera.Zoom, xOffset);
+		// Right sidebar spans [xOffset + renderWidth, fbW)
+		m_ui_handler->right_sidebar(deltaTime, &renderer.camera.Zoom,
+			static_cast<float>(xOffset),
+			static_cast<float>(m_renderWidth),
+			static_cast<float>(fbW));
+		// Bottom bar spans unused vertical gap under the render viewport
+		m_ui_handler->bottom_bar(deltaTime, &renderer.camera.Zoom,
+			static_cast<float>(xOffset),
+			static_cast<float>(m_renderWidth),
+			bottomBarHeight);
 
 		renderer.m_QuadShader.use();
 		glBindTextureUnit(0, renderer.m_screenTex);
