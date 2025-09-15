@@ -1,8 +1,11 @@
 #pragma once
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <vector>
+#include <iostream>
 #include "shader_class.hpp"
 #include "camera.hpp"
 #include "sphere.hpp"
-#include <vector>
 
 struct CameraData {
 	glm::vec4 position;
@@ -24,8 +27,12 @@ public:
 	Camera camera;
 	float deltaTime = 0.0f;
 	int m_frameCount;
-	std::vector<Sphere> m_spheres;
 
+	std::vector<Sphere> m_spheres;
+	unsigned int m_sphereSSBO = 0;
+	static constexpr int MAX_SPHERES = 256;
+	int m_selectedSphereIndex;
+	bool m_spheresDirty = false;
 
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!
@@ -45,6 +52,9 @@ public:
 	void static scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	void processInput(GLFWwindow* window);
 
+	int AddSphere(const Sphere& s);
+	void UploadSpheres();
+
 private:
 	int m_width;
 	int m_height;
@@ -52,4 +62,5 @@ private:
 	void InitScreenTexture();
 	void InitCameraUBO();
 	void InitComputeShader();
+	void InitSphereSSBO();
 };

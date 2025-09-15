@@ -4,7 +4,7 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
-const int MAX_SPHERES = 4;
+//const int MAX_SPHERES = 4;
 
 const int MATERIAL_DIFFUSE = 0;
 const int MATERIAL_METAL = 1;
@@ -36,6 +36,13 @@ struct Sphere
 	float radius;
 	Material material;
 };
+
+layout(std430, binding = 1) buffer SphereBuffer
+{
+    Sphere spheres[];
+};
+
+uniform int uSphereCount;
 
 struct Ray
 {
@@ -262,7 +269,7 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 	return false;
 }
 
-vec3 ray_color(Ray ray, int spheres_count, Sphere spheres[MAX_SPHERES])
+vec3 ray_color(Ray ray, int spheres_count)
 {
 	vec3 accumulated_color = vec3(1.0); // Start with white light
 	vec3 final_color = vec3(0.0);       // Accumulated final color
@@ -332,39 +339,13 @@ void main()
 	int samples_per_pixel = 5;
 	vec3 accumulated_color = vec3(0.0);
 
-	Sphere sphere;
-	sphere.position=vec3(-1.0, 0.0, -6.0);
-	sphere.radius=1;
-	sphere.material = Material(MATERIAL_DIFFUSE, vec3(0.7, 0.3, 0.3), 0.0, 1.0);
-
-	Sphere ground;
-	ground.position=vec3(0.0, -101, -6.0);
-	ground.radius=100.0;
-	ground.material = Material(MATERIAL_DIFFUSE, vec3(0.3, 0.3, 0.7), 0.0, 1.0);
-
-	Sphere metal_sphere;
-	metal_sphere.position=vec3(1.0, 0.0, -6.0);
-	metal_sphere.radius=1.0;
-	metal_sphere.material = Material(MATERIAL_METAL, vec3(0.8, 0.8, 0.8), 0.1, 1.0);
-
-	Sphere glass_sphere;
-	glass_sphere.position=vec3(0.0, 0.0, -4.0);
-	glass_sphere.radius=1.0;
-	glass_sphere.material = Material(MATERIAL_GLASS, vec3(1.0, 1.0, 1.0), 0.0, 1.5);
-
-	Sphere spheres[MAX_SPHERES];
-	spheres[0]=sphere;
-	spheres[1]=ground;
-	spheres[2]=metal_sphere;
-	spheres[3]=glass_sphere;
-
 	for (int i=0; i<samples_per_pixel; i++)
 	{
 		vec2 offset = get_subpixel_offset(i);
         vec2 uv = (vec2(pixel_coords) + offset) / vec2(dims);
         Ray ray = createCameraRay(uv);
 
-        accumulated_color += ray_color(ray, MAX_SPHERES, spheres);
+        accumulated_color += ray_color(ray, uSphereCount);
 	}
 
 	pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);

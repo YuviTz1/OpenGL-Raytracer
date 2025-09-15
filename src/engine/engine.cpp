@@ -1,12 +1,11 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include "engine.hpp"
 #include <glm/glm.hpp> 
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include "engine.hpp"
-#include "../renderer/camera.hpp"
+
 #include "../renderer/renderer.hpp"
+#include "../renderer/camera.hpp"
 
 Engine::Engine(int renderWidth, int renderHeight, std::string title)
 	: m_renderWidth(renderWidth), m_renderHeight(renderHeight), m_title(title),
@@ -89,6 +88,10 @@ void Engine::Run(Renderer &renderer)
 
 	const double targetFrameTime = 1.0 / 60.0;  // 60 FPS cap
 
+	m_ui_handler->bindSpheres(&renderer.m_spheres,
+		&renderer.m_selectedSphereIndex,
+		&renderer.m_spheresDirty);
+
 	while (!glfwWindowShouldClose(m_window))
 	{
 		double frameStart = glfwGetTime();
@@ -129,6 +132,12 @@ void Engine::Run(Renderer &renderer)
 		const int localSizeZ = 1;
 		int groupCountX = (m_renderWidth + localSizeX - 1) / localSizeX;
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
+
+		renderer.UploadSpheres();
+		renderer.m_computeShader.use();
+		/*glUniform1i(glGetUniformLocation(renderer.m_computeShader.ID, "uSphereCount"),
+			(int)renderer.m_spheres.size());*/
+		renderer.m_computeShader.setInt("uSphereCount", (int)renderer.m_spheres.size());
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
 		// Center horizontally, align to top vertically.

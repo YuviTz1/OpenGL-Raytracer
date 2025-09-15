@@ -1,11 +1,24 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp> 
-
-#include "stb_image.h"
 #include "renderer.hpp"
-#include "camera.hpp"
+#include "stb_image.h"
 #include "imgui.h"
+
+struct GPUMaterial {
+    int type;              // offset 0
+    int _padA[3];          // pad to 16
+    glm::vec4 albedo;      // offset 16 (occupies 16 stride)
+    float roughness;       // offset 32
+    float ior;             // offset 36
+    float _padB[2];        // pad to 48
+};
+static_assert(sizeof(GPUMaterial) == 48, "GPUMaterial mismatch");
+
+struct GPUSphere {
+    glm::vec4 position;    // offset 0 (stride 16)
+    float radius;          // offset 16
+    int _padC[3];          // pad to 32
+    GPUMaterial material;  // offset 32
+};
+static_assert(sizeof(GPUSphere) == 80, "GPUSphere mismatch");
 
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader")
@@ -13,11 +26,53 @@ Renderer::Renderer(int width, int height)
 	InitCameraUBO();
     InitScreenTexture();
     InitComputeShader();
+	InitSphereSSBO();
+
+    Sphere ground;
+    ground.position = glm::vec4(0.0f, -101.0f, -6.0f, 0.0f);
+    ground.radius = 100.0f;
+    ground.material.type = DIFFUSE;
+    ground.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
+    AddSphere(ground);
 }
 
-Renderer::~Renderer()
-{
 
+int Renderer::AddSphere(const Sphere& s)
+{
+    if ((int)m_spheres.size() >= MAX_SPHERES) {
+        std::cout << "Max spheres reached\n";
+        return -1;
+    }
+    m_spheres.push_back(s);
+    m_spheresDirty = true;
+    m_selectedSphereIndex = (int)m_spheres.size() - 1;
+    return m_selectedSphereIndex;
+}
+
+void Renderer::UploadSpheres()
+{
+    if (!m_spheresDirty) return;
+
+    std::vector<GPUSphere> gpuData;
+    gpuData.reserve(m_spheres.size());
+
+    for (const auto& s : m_spheres)
+    {
+        GPUSphere gs;
+        gs.position = s.position;
+        gs.radius = s.radius;
+        gs.material.type = static_cast<int>(s.material.type);
+        gs.material.albedo = s.material.albedo;
+        gs.material.roughness = s.material.roughness;
+        gs.material.ior = s.material.ior;
+        gpuData.push_back(gs);
+    }
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sphereSSBO);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, gpuData.size() * sizeof(GPUSphere), gpuData.data());
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    m_spheresDirty = false;
 }
 
 void Renderer::InitScreenTexture()
@@ -93,6 +148,16 @@ void Renderer::InitComputeShader()
     }
 }
 
+void Renderer::InitSphereSSBO()
+{
+    glGenBuffers(1, &m_sphereSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_sphereSSBO);
+    // Allocate max capacity upfront
+    glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_SPHERES * sizeof(GPUSphere), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_sphereSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
 void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
     // Skip if ImGui wants the mouse
@@ -158,4 +223,9 @@ void Renderer::processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.ProcessKeyboard(RIGHT, deltaTime);
     }
+}
+
+Renderer::~Renderer()
+{
+
 }

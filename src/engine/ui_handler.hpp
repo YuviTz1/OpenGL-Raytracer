@@ -1,14 +1,10 @@
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/vec3.hpp>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
-// Forward declaration instead of including the full camera header
-class Camera;
+#include <glm/vec3.hpp>
+#include <glm/glm.hpp>
+#include <vector>
+#include "../renderer/sphere.hpp"
 
 class UI_handler
 {
@@ -34,4 +30,14 @@ public:
 		int windowWidth, int windowHeight,
 		int samplesPerPixel, int maxBounce,
 		int localSizeX, int localSizeY, int localSizeZ);
+
+	// New binding
+	void bindSpheres(std::vector<Sphere>* spheres,
+		int* selectedIndex,
+		bool* spheresDirty);
+
+private:
+	std::vector<Sphere>* m_spheres = NULL;
+	int* m_selectedSphere = NULL;
+	bool* m_spheresDirty = NULL;
 };

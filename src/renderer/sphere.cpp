@@ -1,11 +1,11 @@
 #include "sphere.hpp"
 
 Sphere::Sphere()
-	: position(glm::vec3(0.0f)), radius(1.0f), material(Material())
+	: position(glm::vec4(0.0f)), radius(1.0f), material(Material())
 {
 }
 
-Sphere::Sphere(glm::vec3 position, float radius, Material material)
+Sphere::Sphere(glm::vec4 position, float radius, Material material)
 	: position(position), radius(radius), material(material)
 {
 }

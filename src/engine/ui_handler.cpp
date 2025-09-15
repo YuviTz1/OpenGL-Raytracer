@@ -1,6 +1,12 @@
 #include "ui_handler.hpp"
 #include <algorithm>
 
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "../renderer/camera.hpp"
+#include "../renderer/renderer.hpp"
+
 void UI_handler::render()
 {
 	// ImGui render (after your scene)
@@ -45,10 +51,51 @@ void UI_handler::left_sidebar(float deltaTime, float* zoom, float sidebarWidth)
 
 	ImGui::Begin("Sidebar", nullptr, flags);
 
-	ImGui::Text("Renderer Panel");
+	ImGui::Text("Scene");
 	ImGui::Separator();
-	ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
-	ImGui::SliderFloat("FOV", zoom, 20.0f, 90.0f);
+
+	if (m_spheres)
+	{
+		ImGui::Separator();
+		if (ImGui::Button("Add Sphere"))
+		{
+			Sphere s;
+			s.position = glm::vec4(0.0f, 0.0f, -6.0f, 0.0f);
+			s.radius = 1.0f;
+			s.material.type = DIFFUSE;
+			s.material.albedo = glm::vec4(0.7f, 0.3f, 0.3f, 0.0f);
+			m_spheres->push_back(s);
+			if (m_selectedSphere) *m_selectedSphere = (int)m_spheres->size() - 1;
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+
+		if (!m_spheres->empty())
+		{
+			if (ImGui::Button("Delete Selected") && m_selectedSphere && *m_selectedSphere >= 0)
+			{
+				int idx = *m_selectedSphere;
+				if (idx >= 0 && idx < (int)m_spheres->size())
+				{
+					m_spheres->erase(m_spheres->begin() + idx);
+					if (m_spheresDirty) *m_spheresDirty = true;
+					if (m_spheres->empty()) *m_selectedSphere = -1;
+					else *m_selectedSphere = std::min(idx, (int)m_spheres->size() - 1);
+				}
+			}
+			ImGui::Separator();
+			for (int i = 0; i < (int)m_spheres->size(); ++i)
+			{
+				char label[32];
+				snprintf(label, 32, "Sphere %d", i);
+				bool sel = (m_selectedSphere && *m_selectedSphere == i);
+				if (ImGui::Selectable(label, sel))
+				{
+					if (m_selectedSphere) *m_selectedSphere = i;
+				}
+			}
+		}
+	}
+	
 
 	// Additional controls can go here
 
@@ -126,6 +173,13 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	ImGui::Text("Work Group Size: %d x %d x %d", localSizeX, localSizeY, localSizeZ);
 
 	ImGui::End();
+}
+
+void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, bool* spheresDirty)
+{
+	m_spheres = spheres;
+	m_selectedSphere = selectedIndex;
+	m_spheresDirty = spheresDirty;
 }
 
 UI_handler::UI_handler()
