@@ -32,6 +32,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
+	if (!camera_active) return;
     float velocity = MovementSpeed * deltaTime;
     if (direction == FORWARD)
         Position += Front * velocity;
@@ -47,6 +48,7 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 
 void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch)
 {
+	if (!camera_active) return;
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
 
@@ -68,6 +70,7 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPi
 
 void Camera::ProcessMouseScroll(float yoffset)
 {
+	if (!camera_active) return;
     Zoom -= (float)yoffset;
     if (Zoom < 1.0f)
         Zoom = 1.0f;

@@ -195,16 +195,16 @@ void Engine::Run(Renderer &renderer)
 		}
 
 		// Frame limiting (sleep based on glfw time)
-		//double frameEnd = glfwGetTime();
-		//double frameDuration = frameEnd - frameStart;
-		//if (frameDuration < targetFrameTime)
-		//{
-		//	double sleepSeconds = targetFrameTime - frameDuration;
-		//	std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
-		//}
+		double frameEnd = glfwGetTime();
+		double frameDuration = frameEnd - frameStart;
+		if (frameDuration < targetFrameTime)
+		{
+			double sleepSeconds = targetFrameTime - frameDuration;
+			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
+		}
 
-		//// Persist last frame start in member (in case Run() is ever re-entered)
-		//m_previousTime = lastFrameStart;
+		// Persist last frame start in member (in case Run() is ever re-entered)
+		m_previousTime = lastFrameStart;
 	}
 }
 

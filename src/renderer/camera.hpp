@@ -32,6 +32,7 @@ public:
     float MovementSpeed;
     float MouseSensitivity;
     float Zoom;
+    bool camera_active = true;
 
     void updateCameraVectors();
     Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch);

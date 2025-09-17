@@ -39,6 +39,14 @@ static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, i
 {
     ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     // Optionally: your own keyboard handling here if (!ImGui::GetIO().WantCaptureKeyboard) { ... }
+
+	// Toggle camera on/off with space
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
+        Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+        if (renderer) {
+            renderer->camera.camera_active = !renderer->camera.camera_active;
+        }
+    }
 }
 
 static void CharCallback(GLFWwindow* window, unsigned int c)
