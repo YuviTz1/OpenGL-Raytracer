@@ -136,7 +136,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 
 		// Position (editable)
 		float pos[3] = { s.position.x, s.position.y, s.position.z };
-		if (ImGui::DragFloat3("Position", pos, 0.01f, -1000.0f, 1000.0f, "%.3f"))
+		if (ImGui::DragFloat3("Position", pos, 0.05f, -1000.0f, 1000.0f, "%.3f"))
 		{
 			s.position.x = pos[0];
 			s.position.y = pos[1];
@@ -145,7 +145,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		}
 
 		// Radius
-		if (ImGui::SliderFloat("Radius", &s.radius, 0.001f, 100.0f))
+		if (ImGui::DragFloat("Radius", &s.radius, 0.05f, -1000.0f, 1000.0f, "%.3f"))
 		{
 			if (m_spheresDirty) *m_spheresDirty = true;
 		}
