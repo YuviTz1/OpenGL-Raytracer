@@ -155,9 +155,9 @@ void Engine::Run(Renderer &renderer)
 		if (bottomBarHeight < 0.0f) bottomBarHeight = 0.0f;
 
 		// Left sidebar spans [0, xOffset)
-		m_ui_handler->left_sidebar(deltaTime, &renderer.camera.Zoom, xOffset);
+		m_ui_handler->left_sidebar(deltaTime, xOffset);
 		// Right sidebar spans [xOffset + renderWidth, fbW)
-		m_ui_handler->right_sidebar(deltaTime, &renderer.camera.Zoom,
+		m_ui_handler->right_sidebar(
 			static_cast<float>(xOffset),
 			static_cast<float>(m_renderWidth),
 			static_cast<float>(fbW));

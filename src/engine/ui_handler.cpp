@@ -28,7 +28,7 @@ void UI_handler::example_ui(float deltaTime, float* zoom)
 	ImGui::End();
 }
 
-void UI_handler::left_sidebar(float deltaTime, float* zoom, float sidebarWidth)
+void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 {
 	// Begin a new ImGui frame (ensure you do NOT also call example_ui this frame)
 	ImGui_ImplOpenGL3_NewFrame();
@@ -102,8 +102,7 @@ void UI_handler::left_sidebar(float deltaTime, float* zoom, float sidebarWidth)
 	ImGui::End();
 }
 
-void UI_handler::right_sidebar(float deltaTime, float* zoom,
-	float renderStartX, float renderWidth, float windowWidth)
+void UI_handler::right_sidebar(float renderStartX, float renderWidth, float windowWidth)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	float startX = renderStartX + renderWidth;
@@ -123,10 +122,74 @@ void UI_handler::right_sidebar(float deltaTime, float* zoom,
 		ImGuiWindowFlags_NoNavFocus;
 
 	ImGui::Begin("RightSidebar", nullptr, flags);
-	ImGui::Text("Renderer (Right)");
+	ImGui::Text("Properties");
 	ImGui::Separator();
-	ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
-	ImGui::SliderFloat("FOV (Right)", zoom, 20.0f, 90.0f);
+
+	// Selected sphere inspector
+	if (m_spheres && m_selectedSphere && *m_selectedSphere >= 0 && *m_selectedSphere < (int)m_spheres->size())
+	{
+		int idx = *m_selectedSphere;
+		Sphere& s = (*m_spheres)[idx];
+
+		ImGui::Text("Selected Sphere: %d", idx);
+		ImGui::Separator();
+
+		// Position (editable)
+		float pos[3] = { s.position.x, s.position.y, s.position.z };
+		if (ImGui::DragFloat3("Position", pos, 0.01f, -1000.0f, 1000.0f, "%.3f"))
+		{
+			s.position.x = pos[0];
+			s.position.y = pos[1];
+			s.position.z = pos[2];
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+
+		// Radius
+		if (ImGui::SliderFloat("Radius", &s.radius, 0.001f, 100.0f))
+		{
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+
+		ImGui::Separator();
+		ImGui::Text("Material");
+		// Material type
+		const char* materialItems[] = { "Diffuse", "Metal", "Dielectric" };
+		int matType = (int)s.material.type;
+		if (ImGui::Combo("Type", &matType, materialItems, IM_ARRAYSIZE(materialItems)))
+		{
+			s.material.type = (MaterialType)matType;
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+
+		// Albedo (color)
+		float albedo[3] = { s.material.albedo.x, s.material.albedo.y, s.material.albedo.z };
+		if (ImGui::ColorEdit3("Albedo", albedo))
+		{
+			s.material.albedo.x = albedo[0];
+			s.material.albedo.y = albedo[1];
+			s.material.albedo.z = albedo[2];
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+		// expose alpha if needed
+		ImGui::InputFloat("Albedo A", &s.material.albedo.w, 0.0f, 0.0f, "%.3f");
+
+		// Roughness and IOR
+		if (ImGui::SliderFloat("Roughness", &s.material.roughness, 0.0f, 1.0f))
+		{
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+		if (ImGui::SliderFloat("IOR", &s.material.ior, 1.0f, 3.0f))
+		{
+			if (m_spheresDirty) *m_spheresDirty = true;
+		}
+
+		ImGui::Separator();
+	}
+	else
+	{
+		ImGui::Text("No sphere selected");
+		ImGui::Separator();
+	}
 	ImGui::End();
 }
 
