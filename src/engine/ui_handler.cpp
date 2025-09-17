@@ -252,6 +252,7 @@ UI_handler::UI_handler()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::StyleColorsDark();
+	io.FontGlobalScale = 1.7f;
 }
 
 void UI_handler::init(GLFWwindow* window)
