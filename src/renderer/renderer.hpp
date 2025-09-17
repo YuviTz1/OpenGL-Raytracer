@@ -31,7 +31,7 @@ public:
 	std::vector<Sphere> m_spheres;
 	unsigned int m_sphereSSBO = 0;
 	static constexpr int MAX_SPHERES = 256;
-	int m_selectedSphereIndex;
+	int m_selectedSphereIndex = -1;
 	bool m_spheresDirty = false;
 
 	unsigned int m_indices[6] =
