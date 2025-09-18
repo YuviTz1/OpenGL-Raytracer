@@ -12,7 +12,6 @@ public:
 	UI_handler();
 	~UI_handler();
 	void render();
-	void example_ui(float deltaTime, float* zoom);
 	void init(GLFWwindow* window);
 
 	// New: Left sidebar panel

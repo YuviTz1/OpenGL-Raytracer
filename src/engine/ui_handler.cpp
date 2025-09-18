@@ -1,5 +1,6 @@
 #include "ui_handler.hpp"
 #include <algorithm>
+#include <cstring>
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -12,20 +13,6 @@ void UI_handler::render()
 	// ImGui render (after your scene)
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void UI_handler::example_ui(float deltaTime, float* zoom)
-{
-	// Start ImGui frame
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-
-	// Example UI
-	ImGui::Begin("Stats");
-	ImGui::Text("FPS: %.1f", 1.0f / std::max(0.0001f, deltaTime));
-	ImGui::SliderFloat("FOV", zoom, 20.0f, 90.0f);
-	ImGui::End();
 }
 
 void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
@@ -86,7 +73,8 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 			for (int i = 0; i < (int)m_spheres->size(); ++i)
 			{
 				char label[32];
-				snprintf(label, 32, "Sphere %d", i);
+				//snprintf(label, 32, "Sphere %d", i);
+				std::snprintf(label, 32, "%s##%d", (*m_spheres)[i].id.c_str(), i); // use id as label, but ensure unique with ##
 				bool sel = (m_selectedSphere && *m_selectedSphere == i);
 				if (ImGui::Selectable(label, sel))
 				{
@@ -131,8 +119,20 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		int idx = *m_selectedSphere;
 		Sphere& s = (*m_spheres)[idx];
 
-		ImGui::Text("Selected Sphere: %d", idx);
+		ImGui::Text("Selected Sphere: %s", s.id.c_str());
 		ImGui::Separator();
+
+		// Name / ID (editable)
+		{
+			char nameBuf[32] = {0};
+			// copy current id into buffer (truncate if longer than buffer)
+			std::strncpy(nameBuf, s.id.c_str(), sizeof(nameBuf) - 1);
+			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
+			{
+				s.id = std::string(nameBuf);
+				if (m_spheresDirty) *m_spheresDirty = true;
+			}
+		}
 
 		// Position (editable)
 		float pos[3] = { s.position.x, s.position.y, s.position.z };
