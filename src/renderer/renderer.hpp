@@ -16,6 +16,11 @@ struct CameraData {
 	glm::vec2 padding;
 };
 
+struct AccumulationData {
+	unsigned int frameCount;
+	unsigned int padding[3];
+};
+
 class Renderer
 {
 public:
@@ -24,15 +29,19 @@ public:
 	unsigned int m_VAO = NULL;
 	unsigned int m_cameraUBO = NULL;
 	unsigned int m_screenTex = NULL;
+	unsigned int m_accumulationUBO = NULL;
 	Camera camera;
 	float deltaTime = 0.0f;
 	int m_frameCount;
+	unsigned int m_accumulationTexture;
+	AccumulationData accumulationData;
 
 	std::vector<Sphere> m_spheres;
 	unsigned int m_sphereSSBO = 0;
 	static constexpr int MAX_SPHERES = 256;
 	int m_selectedSphereIndex = -1;
 	bool m_spheresDirty = false;
+	bool shouldResetAccumulation = false;
 
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!
@@ -51,9 +60,11 @@ public:
 	void static mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 	void static scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 	void processInput(GLFWwindow* window);
+	void updateAccumulation();
 
 	int AddSphere(const Sphere& s);
 	void UploadSpheres();
+	void resetAccumulation();
 
 private:
 	int m_width;
@@ -63,4 +74,5 @@ private:
 	void InitCameraUBO();
 	void InitComputeShader();
 	void InitSphereSSBO();
+	void InitAccumulationUBOandTexture();
 };

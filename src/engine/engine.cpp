@@ -140,6 +140,13 @@ void Engine::Run(Renderer &renderer)
 		renderer.m_computeShader.setInt("uSphereCount", (int)renderer.m_spheres.size());
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
+		renderer.accumulationData.frameCount++;
+		if (renderer.shouldResetAccumulation) {
+			renderer.resetAccumulation();
+			renderer.shouldResetAccumulation = false;
+		}
+
+		renderer.updateAccumulation();
 		// Center horizontally, align to top vertically.
 		// OpenGL origin is bottom-left, so top alignment => y = fbH - renderHeight.
 		int xOffset = (fbW - m_renderWidth) / 2;

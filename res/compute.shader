@@ -1,6 +1,12 @@
 #version 460 core
 layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
+layout(std140, binding = 1) uniform AccumulationBlock
+{
+    uint frameCount;
+};
+layout(rgba32f, binding = 1) uniform image2D accumulationImage;
+
 
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
@@ -334,7 +340,7 @@ void main()
     ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 
     // initialize the seed with the pixel coordinates for jitter free image
-    seed = uint(pixel_coords.x ^ pixel_coords.y ^ uint(gl_GlobalInvocationID.x * 1973 + gl_GlobalInvocationID.y * 9277));
+    seed = uint(pixel_coords.x ^ pixel_coords.y ^ frameCount ^ uint(gl_GlobalInvocationID.x * 1973 + gl_GlobalInvocationID.y * 9277));
     
     ivec2 dims = imageSize(screen);
     float aspect = float(dims.x) / float(dims.y);
@@ -352,5 +358,24 @@ void main()
     }
 
     pixel = vec4(linear_to_gamma(accumulated_color / float(samples_per_pixel)), 1.0);
-    imageStore(screen, pixel_coords, pixel);
+
+    // Temporal accumulation
+    vec4 accumulatedColor = imageLoad(accumulationImage, pixel_coords);
+    vec4 finalColor;    
+
+    if (frameCount == 0)
+    {
+        finalColor = pixel;
+    }
+    else
+    {
+        float weight = 1.0 / float(frameCount + 1);
+        finalColor = mix(accumulatedColor, pixel, weight);
+    }
+
+    // Store results
+    imageStore(accumulationImage, pixel_coords, finalColor);
+    //imageStore(imgOutput, pixel, vec4(finalColor, 1.0));
+
+    imageStore(screen, pixel_coords, finalColor);
 }

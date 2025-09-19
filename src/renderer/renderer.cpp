@@ -21,12 +21,13 @@ struct GPUSphere {
 static_assert(sizeof(GPUSphere) == 80, "GPUSphere mismatch");
 
 Renderer::Renderer(int width, int height)
-	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader")
+	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), accumulationData{ 0 }, m_frameCount(0)
 {
 	InitCameraUBO();
     InitScreenTexture();
     InitComputeShader();
 	InitSphereSSBO();
+	InitAccumulationUBOandTexture();
 
     Sphere ground;
     ground.position = glm::vec4(0.0f, -101.0f, -6.0f, 0.0f);
@@ -35,7 +36,6 @@ Renderer::Renderer(int width, int height)
     ground.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
     AddSphere(ground);
 }
-
 
 int Renderer::AddSphere(const Sphere& s)
 {
@@ -125,6 +125,33 @@ void Renderer::InitScreenTexture()
 	m_screenTex = screenTex;
 }
 
+void Renderer::InitAccumulationUBOandTexture()
+{
+    // Create accumulation UBO
+    glGenBuffers(1, &m_accumulationUBO);
+    glBindBuffer(GL_UNIFORM_BUFFER, m_accumulationUBO);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(AccumulationData), &accumulationData, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_accumulationUBO);
+
+    // Create accumulation texture
+    glGenTextures(1, &m_accumulationTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, m_accumulationTexture);
+
+    glTextureParameteri(m_accumulationTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(m_accumulationTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTextureParameteri(m_accumulationTexture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(m_accumulationTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTextureStorage2D(m_accumulationTexture, 1, GL_RGBA32F, m_width, m_height);
+    glBindImageTexture(1, m_accumulationTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+}
+
+void Renderer::updateAccumulation()
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, m_accumulationUBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(AccumulationData), &accumulationData);
+}
+
 void Renderer::InitCameraUBO()
 {
     unsigned int cameraUBO;
@@ -158,6 +185,13 @@ void Renderer::InitSphereSSBO()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
+void Renderer::resetAccumulation() 
+{
+    accumulationData.frameCount = 0;
+    glBindBuffer(GL_UNIFORM_BUFFER, m_accumulationUBO);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(AccumulationData), &accumulationData);
+}
+
 void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
     // Skip if ImGui wants the mouse
@@ -188,6 +222,7 @@ void Renderer::mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     renderer->camera_lastY = ypos;
 
     renderer->camera.ProcessMouseMovement(xoffset, yoffset);
+	renderer->shouldResetAccumulation = true;
 }
 
 void Renderer::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -210,18 +245,22 @@ void Renderer::processInput(GLFWwindow* window)
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         camera.ProcessKeyboard(FORWARD, deltaTime);
+		shouldResetAccumulation = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         camera.ProcessKeyboard(BACKWARD, deltaTime);
+        shouldResetAccumulation = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         camera.ProcessKeyboard(LEFT, deltaTime);
+        shouldResetAccumulation = true;
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.ProcessKeyboard(RIGHT, deltaTime);
+        shouldResetAccumulation = true;
     }
 }
 
