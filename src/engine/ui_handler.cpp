@@ -54,6 +54,7 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 			m_spheres->push_back(s);
 			if (m_selectedSphere) *m_selectedSphere = (int)m_spheres->size() - 1;
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		if (!m_spheres->empty())
@@ -65,6 +66,7 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 				{
 					m_spheres->erase(m_spheres->begin() + idx);
 					if (m_spheresDirty) *m_spheresDirty = true;
+					if (m_resetAccumulation) *m_resetAccumulation = true;
 					if (m_spheres->empty()) *m_selectedSphere = -1;
 					else *m_selectedSphere = std::min(idx, (int)m_spheres->size() - 1);
 				}
@@ -79,6 +81,7 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 				if (ImGui::Selectable(label, sel))
 				{
 					if (m_selectedSphere) *m_selectedSphere = i;
+					if (m_resetAccumulation) *m_resetAccumulation = true;
 				}
 			}
 		}
@@ -131,6 +134,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			{
 				s.id = std::string(nameBuf);
 				if (m_spheresDirty) *m_spheresDirty = true;
+				if (m_resetAccumulation) *m_resetAccumulation = true;
 			}
 		}
 
@@ -142,12 +146,14 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			s.position.y = pos[1];
 			s.position.z = pos[2];
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		// Radius
 		if (ImGui::DragFloat("Radius", &s.radius, 0.05f, -1000.0f, 1000.0f, "%.3f"))
 		{
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		ImGui::Separator();
@@ -159,6 +165,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		{
 			s.material.type = (MaterialType)matType;
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		// Albedo (color)
@@ -169,18 +176,25 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			s.material.albedo.y = albedo[1];
 			s.material.albedo.z = albedo[2];
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 		// expose alpha if needed
-		ImGui::InputFloat("Albedo A", &s.material.albedo.w, 0.0f, 0.0f, "%.3f");
+		if (ImGui::InputFloat("Albedo A", &s.material.albedo.w, 0.0f, 0.0f, "%.3f"))
+		{
+			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
 
 		// Roughness and IOR
 		if (ImGui::SliderFloat("Roughness", &s.material.roughness, 0.0f, 1.0f))
 		{
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 		if (ImGui::SliderFloat("IOR", &s.material.ior, 1.0f, 3.0f))
 		{
 			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		ImGui::Separator();
@@ -238,11 +252,12 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	ImGui::End();
 }
 
-void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, bool* spheresDirty)
+void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, bool* spheresDirty, bool* resetAccumulation)
 {
 	m_spheres = spheres;
 	m_selectedSphere = selectedIndex;
 	m_spheresDirty = spheresDirty;
+	m_resetAccumulation = resetAccumulation;
 }
 
 UI_handler::UI_handler()

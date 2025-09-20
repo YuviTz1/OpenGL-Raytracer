@@ -32,10 +32,12 @@ public:
 	// New binding
 	void bindSpheres(std::vector<Sphere>* spheres,
 		int* selectedIndex,
-		bool* spheresDirty);
+		bool* spheresDirty,
+		bool* resetAccumulation);
 
 private:
 	std::vector<Sphere>* m_spheres = NULL;
 	int* m_selectedSphere = NULL;
 	bool* m_spheresDirty = NULL;
+	bool* m_resetAccumulation = NULL;
 };

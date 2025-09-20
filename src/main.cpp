@@ -24,10 +24,6 @@ static void MouseButtonCallback(GLFWwindow* window, int button, int action, int 
 {
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
     // Optionally: your own mouse-button logic here if (!ImGui::GetIO().WantCaptureMouse) { ... }
-    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
-    if (renderer) {
-        renderer->shouldResetAccumulation = true; // To prevent jump on click
-	}
 }
 
 static void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)

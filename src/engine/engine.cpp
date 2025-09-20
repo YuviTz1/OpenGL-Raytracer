@@ -90,7 +90,8 @@ void Engine::Run(Renderer &renderer)
 
 	m_ui_handler->bindSpheres(&renderer.m_spheres,
 		&renderer.m_selectedSphereIndex,
-		&renderer.m_spheresDirty);
+		&renderer.m_spheresDirty,
+		&renderer.shouldResetAccumulation);
 
 	while (!glfwWindowShouldClose(m_window))
 	{
