@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include "ui_handler.hpp"
+#include "scene.hpp"
 struct Renderer;
 
 class Engine
@@ -10,6 +11,8 @@ class Engine
 public:
 	GLFWwindow* m_window;
 	UI_handler* m_ui_handler;
+	Scene scene;
+
 
 	Engine(int renderWidth, int renderHeight, std::string title);
 	~Engine();

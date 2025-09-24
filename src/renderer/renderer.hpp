@@ -6,6 +6,7 @@
 #include "shader_class.hpp"
 #include "camera.hpp"
 #include "sphere.hpp"
+#include "../engine/scene.hpp"
 
 struct CameraData {
 	glm::vec4 position;
@@ -36,11 +37,8 @@ public:
 	unsigned int m_accumulationTexture;
 	AccumulationData accumulationData;
 
-	std::vector<Sphere> m_spheres;
-	unsigned int m_sphereSSBO = 0;
 	static constexpr int MAX_SPHERES = 256;
-	int m_selectedSphereIndex = -1;
-	bool m_spheresDirty = false;
+	unsigned int m_sphereSSBO = 0;
 	bool shouldResetAccumulation = false;
 
 	unsigned int m_indices[6] =
@@ -62,8 +60,7 @@ public:
 	void processInput(GLFWwindow* window);
 	void updateAccumulation();
 
-	int AddSphere(const Sphere& s);
-	void UploadSpheres();
+	void UploadSpheres(Scene& scene);
 	void resetAccumulation();
 
 private:

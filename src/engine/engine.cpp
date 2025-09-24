@@ -88,9 +88,9 @@ void Engine::Run(Renderer &renderer)
 
 	const double targetFrameTime = 1.0 / 60.0;  // 60 FPS cap
 
-	m_ui_handler->bindSpheres(&renderer.m_spheres,
-		&renderer.m_selectedSphereIndex,
-		&renderer.m_spheresDirty,
+	m_ui_handler->bindSpheres(&scene.m_spheres,
+		&scene.m_selectedSphereIndex,
+		&scene.m_spheresDirty,
 		&renderer.shouldResetAccumulation);
 
 	while (!glfwWindowShouldClose(m_window))
@@ -134,11 +134,11 @@ void Engine::Run(Renderer &renderer)
 		int groupCountX = (m_renderWidth + localSizeX - 1) / localSizeX;
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
 
-		renderer.UploadSpheres();
+		renderer.UploadSpheres(scene);
 		renderer.m_computeShader.use();
 		/*glUniform1i(glGetUniformLocation(renderer.m_computeShader.ID, "uSphereCount"),
 			(int)renderer.m_spheres.size());*/
-		renderer.m_computeShader.setInt("uSphereCount", (int)renderer.m_spheres.size());
+		renderer.m_computeShader.setInt("uSphereCount", (int)scene.m_spheres.size());
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
 		renderer.accumulationData.frameCount++;

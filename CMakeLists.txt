@@ -33,10 +33,11 @@ set(SOURCES
     src/renderer/shader_class.cpp
     src/renderer/stb_image.cpp
     src/renderer/renderer.cpp
-    src/engine/engine.cpp
-    src/engine/ui_handler.cpp
     src/renderer/sphere.cpp
     src/renderer/material.cpp
+    src/engine/engine.cpp
+    src/engine/ui_handler.cpp
+    src/engine/scene.cpp
 )
 
 # Create executable

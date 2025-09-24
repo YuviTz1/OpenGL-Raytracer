@@ -28,35 +28,16 @@ Renderer::Renderer(int width, int height)
     InitComputeShader();
 	InitSphereSSBO();
 	InitAccumulationUBOandTexture();
-
-    Sphere ground;
-    ground.position = glm::vec4(0.0f, -101.0f, -6.0f, 0.0f);
-    ground.radius = 100.0f;
-    ground.material.type = DIFFUSE;
-    ground.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
-    AddSphere(ground);
 }
 
-int Renderer::AddSphere(const Sphere& s)
+void Renderer::UploadSpheres(Scene& scene)
 {
-    if ((int)m_spheres.size() >= MAX_SPHERES) {
-        std::cout << "Max spheres reached\n";
-        return -1;
-    }
-    m_spheres.push_back(s);
-    m_spheresDirty = true;
-    m_selectedSphereIndex = (int)m_spheres.size() - 1;
-    return m_selectedSphereIndex;
-}
-
-void Renderer::UploadSpheres()
-{
-    if (!m_spheresDirty) return;
+    if (!scene.m_spheresDirty) return;
 
     std::vector<GPUSphere> gpuData;
-    gpuData.reserve(m_spheres.size());
+    gpuData.reserve(scene.m_spheres.size());
 
-    for (const auto& s : m_spheres)
+    for (const auto& s : scene.m_spheres)
     {
         GPUSphere gs;
         gs.position = s.position;
@@ -72,7 +53,7 @@ void Renderer::UploadSpheres()
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, gpuData.size() * sizeof(GPUSphere), gpuData.data());
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    m_spheresDirty = false;
+    scene.m_spheresDirty = false;
 }
 
 void Renderer::InitScreenTexture()
