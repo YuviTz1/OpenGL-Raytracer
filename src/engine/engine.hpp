@@ -10,7 +10,7 @@ class Engine
 {
 public:
 	GLFWwindow* m_window;
-	UI_handler* m_ui_handler;
+	std::unique_ptr<UI_handler> m_ui_handler;
 	Scene scene;
 
 

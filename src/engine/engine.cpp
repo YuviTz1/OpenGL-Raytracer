@@ -11,7 +11,7 @@ Engine::Engine(int renderWidth, int renderHeight, std::string title)
 	: m_renderWidth(renderWidth), m_renderHeight(renderHeight), m_title(title),
 	  m_windowWidth(renderWidth), m_windowHeight(renderHeight)
 {
-	m_ui_handler = new UI_handler();
+	m_ui_handler = std::make_unique<UI_handler>();
 	InitGLResources();
 }
 
