@@ -7,6 +7,7 @@
 #include "backends/imgui_impl_opengl3.h"
 #include "../renderer/camera.hpp"
 #include "../renderer/renderer.hpp"
+#include "scene.hpp" // Add this include
 
 void UI_handler::render()
 {
@@ -249,6 +250,39 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	ImGui::Text("Samples Per Pixel: %d  | Max Bounce: %d", samplesPerPixel, maxBounce);
 	ImGui::Text("Work Group Size: %d x %d x %d", localSizeX, localSizeY, localSizeZ);
 
+	// Added code for scene save/load
+	static char savePath[256] = "scene_save.bin";
+	static char loadPath[256] = "scene_save.bin";
+	static char statusMsg[128] = "";
+
+	ImGui::Separator();
+	ImGui::Text("Scene Save/Load");
+
+	ImGui::InputText("Save Path", savePath, sizeof(savePath));
+	if (ImGui::Button("Save Scene")) {
+		if (m_scene) {
+			if (m_scene->SaveToFile(savePath))
+				std::snprintf(statusMsg, sizeof(statusMsg), "Scene saved to %s", savePath);
+			else
+				std::snprintf(statusMsg, sizeof(statusMsg), "Failed to save scene!");
+		}
+	}
+
+	ImGui::InputText("Load Path", loadPath, sizeof(loadPath));
+	if (ImGui::Button("Load Scene")) {
+		if (m_scene && m_resetAccumulation_external) {
+			bool reset = false;
+			if (m_scene->LoadFromFile(loadPath, reset)) {
+				*m_resetAccumulation_external = true;
+				std::snprintf(statusMsg, sizeof(statusMsg), "Scene loaded from %s", loadPath);
+			} else {
+				std::snprintf(statusMsg, sizeof(statusMsg), "Failed to load scene!");
+			}
+		}
+	}
+
+	ImGui::Text("%s", statusMsg);
+
 	ImGui::End();
 }
 
@@ -258,6 +292,12 @@ void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, b
 	m_selectedSphere = selectedIndex;
 	m_spheresDirty = spheresDirty;
 	m_resetAccumulation = resetAccumulation;
+}
+
+void UI_handler::setScene(Scene* scene, bool* resetAccumulation)
+{
+	m_scene = scene;
+	m_resetAccumulation_external = resetAccumulation;
 }
 
 UI_handler::UI_handler()

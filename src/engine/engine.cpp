@@ -93,6 +93,8 @@ void Engine::Run(Renderer &renderer)
 		&scene.m_spheresDirty,
 		&renderer.shouldResetAccumulation);
 
+	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation);
+
 	while (!glfwWindowShouldClose(m_window))
 	{
 		double frameStart = glfwGetTime();

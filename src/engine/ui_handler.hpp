@@ -6,6 +6,8 @@
 #include <vector>
 #include "../renderer/sphere.hpp"
 
+class Scene; // forward declare
+
 class UI_handler
 {
 public:
@@ -35,9 +37,13 @@ public:
 		bool* spheresDirty,
 		bool* resetAccumulation);
 
+	void setScene(Scene* scene, bool* resetAccumulation);
+
 private:
 	std::vector<Sphere>* m_spheres = NULL;
 	int* m_selectedSphere = NULL;
 	bool* m_spheresDirty = NULL;
 	bool* m_resetAccumulation = NULL;
+	Scene* m_scene = nullptr;
+	bool* m_resetAccumulation_external = nullptr;
 };

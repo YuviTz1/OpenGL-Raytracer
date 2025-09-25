@@ -14,6 +14,8 @@ public:
 	Scene();
 	~Scene();
 	int AddSphere(const Sphere& s);
+	bool SaveToFile(const std::string& path);
+	bool LoadFromFile(const std::string& path, bool& shouldResetAccumulation);
 
 	std::vector<Sphere> m_spheres;	
 	static constexpr int MAX_SPHERES = 256;
