@@ -156,7 +156,7 @@ Scene::Scene()
     Sphere Sun;
     Sun.id = "Sun";
     Sun.position = glm::vec4(0.0f, 1000.0f, 300.0f, 0.0f);
-    Sun.radius = 150.0f;
+    Sun.radius = 80.0f;
     Sun.material.type = EMISSIVE;
     Sun.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
 	Sun.material.emission = glm::vec4(232.0f, 232.0f, 232.0f, 0.0f); // bright "sun" light

@@ -280,6 +280,17 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
     return false;
 }
 
+// Sky gradient
+vec3 sky_color(vec3 dir)
+{
+    vec3 d = normalize(dir);
+    float t = clamp(0.5 * (d.y + 1.0), 0.0, 1.0); // 0 at horizon looking down, 1 at zenith
+    vec3 horizon = vec3(0.94, 0.97, 1.00); // near-white horizon
+    vec3 zenith  = vec3(0.529, 0.808, 0.922); // sky blue
+    float smoothT = pow(t, 0.65);
+    return mix(horizon, zenith, smoothT) * 1.0; // final multiplier can be adjusted for brightness
+}
+
 vec3 ray_color(Ray ray, int spheres_count)
 {
     vec3 accumulated_color = vec3(1.0); // Path throughput
@@ -332,12 +343,12 @@ vec3 ray_color(Ray ray, int spheres_count)
         else
         {
             // No hit: return faint background
-            return accumulated_color * background;
+            return accumulated_color * sky_color(ray.direction);
         }
     }
 
     // Max bounces reached: return faint background
-    return accumulated_color * background;
+    return accumulated_color * sky_color(ray.direction);
 }
 
 void main()
