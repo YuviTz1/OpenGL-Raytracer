@@ -146,11 +146,21 @@ bool Scene::LoadFromFile(const std::string& path, bool& shouldResetAccumulation)
 Scene::Scene()
 {
     Sphere ground;
+    ground.id = "Ground";
     ground.position = glm::vec4(0.0f, -101.0f, -6.0f, 0.0f);
     ground.radius = 100.0f;
     ground.material.type = DIFFUSE;
     ground.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
     AddSphere(ground);
+
+    Sphere Sun;
+    Sun.id = "Sun";
+    Sun.position = glm::vec4(0.0f, 1000.0f, -500.0f, 0.0f);
+    Sun.radius = 100.0f;
+    Sun.material.type = EMISSIVE;
+    Sun.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
+	Sun.material.emission = glm::vec4(255.0f, 232.0f, 124.0f, 0.0f); // bright "sun" light
+    AddSphere(Sun);
 }
 
 Scene::~Scene()

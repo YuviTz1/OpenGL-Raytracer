@@ -351,7 +351,7 @@ void main()
     ivec2 dims = imageSize(screen);
     float aspect = float(dims.x) / float(dims.y);
 
-    int samples_per_pixel = 2;
+    int samples_per_pixel = 3;
     vec3 accumulated_color = vec3(0.0);
 
     for (int i=0; i<samples_per_pixel; i++)
