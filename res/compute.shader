@@ -15,6 +15,7 @@ const float MAX_DIST = 1000.0;
 const int MATERIAL_DIFFUSE = 0;
 const int MATERIAL_METAL = 1;
 const int MATERIAL_GLASS = 2;
+const int MATERIAL_LIGHT = 3;
 
 
 //Camera uniform
@@ -33,6 +34,7 @@ struct Material
     int type;
     int _padA[3];
     vec4 albedo;
+    vec4 emission;
     float roughness;
     float ior;
     float _padB[2];
@@ -280,9 +282,9 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 
 vec3 ray_color(Ray ray, int spheres_count)
 {
-    vec3 accumulated_color = vec3(1.0); // Start with white light
-    vec3 final_color = vec3(0.0);       // Accumulated final color
+    vec3 accumulated_color = vec3(1.0); // Path throughput
     int max_bounces = 5;
+    vec3 background = vec3(0.01, 0.01, 0.01); // Very faint background light
 
     for (int bounce = 0; bounce < max_bounces; bounce++)
     {
@@ -304,6 +306,12 @@ vec3 ray_color(Ray ray, int spheres_count)
 
         if (hit_anything)
         {
+            // If hit a light, return its emission and terminate
+            if (closest_rec.material.type == MATERIAL_LIGHT)
+            {
+                return accumulated_color * closest_rec.material.emission.xyz;
+            }
+
             Ray scattered;
             vec3 attenuation;
             if (scatter(ray, closest_rec, attenuation, scattered))
@@ -323,15 +331,13 @@ vec3 ray_color(Ray ray, int spheres_count)
         }
         else
         {
-            // Background gradient
-            vec3 unit_direction = normalize(ray.direction);
-            float a = 0.5 * (unit_direction.y + 1.0); // To bring in range [0.0, 1.0]
-            final_color += accumulated_color * ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0));
-            break;
+            // No hit: return faint background
+            return accumulated_color * background;
         }
     }
 
-    return final_color;
+    // Max bounces reached: return faint background
+    return accumulated_color * background;
 }
 
 void main()

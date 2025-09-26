@@ -49,6 +49,10 @@ bool Scene::SaveToFile(const std::string& path)
         float alb[4] = { s.material.albedo.r, s.material.albedo.g, s.material.albedo.b, s.material.albedo.a };
         ofs.write(reinterpret_cast<const char*>(alb), sizeof(alb));
 
+        // write emission
+        float emi[4] = { s.material.emission.r, s.material.emission.g, s.material.emission.b, s.material.emission.a };
+        ofs.write(reinterpret_cast<const char*>(emi), sizeof(emi));
+
         ofs.write(reinterpret_cast<const char*>(&s.material.roughness), sizeof(s.material.roughness));
         ofs.write(reinterpret_cast<const char*>(&s.material.ior), sizeof(s.material.ior));
     }
@@ -117,6 +121,11 @@ bool Scene::LoadFromFile(const std::string& path, bool& shouldResetAccumulation)
         ifs.read(reinterpret_cast<char*>(alb), sizeof(alb));
         if (!ifs) return false;
         s.material.albedo = glm::vec4(alb[0], alb[1], alb[2], alb[3]);
+
+        float emi[4];
+        ifs.read(reinterpret_cast<char*>(emi), sizeof(emi));
+        if (!ifs) return false;
+        s.material.emission = glm::vec4(emi[0], emi[1], emi[2], emi[3]);
 
         ifs.read(reinterpret_cast<char*>(&s.material.roughness), sizeof(s.material.roughness));
         if (!ifs) return false;

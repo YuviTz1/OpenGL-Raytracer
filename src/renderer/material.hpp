@@ -6,7 +6,8 @@
 enum MaterialType {
 	DIFFUSE = 0,
 	METAL = 1,
-	DIELECTRIC = 2
+	DIELECTRIC = 2,
+	EMISSIVE = 3
 };
 
 class Material
@@ -14,6 +15,7 @@ class Material
 public:
 	MaterialType type;
 	glm::vec4 albedo;
+	glm::vec4 emission;
 	float roughness;
 	float ior;
 

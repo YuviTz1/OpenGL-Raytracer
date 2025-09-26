@@ -3,22 +3,23 @@
 #include "imgui.h"
 
 struct GPUMaterial {
-    int type;              // offset 0
-    int _padA[3];          // pad to 16
-    glm::vec4 albedo;      // offset 16 (occupies 16 stride)
-    float roughness;       // offset 32
-    float ior;             // offset 36
-    float _padB[2];        // pad to 48
+    int type;              
+    int _padA[3];          
+    glm::vec4 albedo;      
+	glm::vec4 emission;    
+    float roughness;       
+    float ior;             
+	float _padB[2];        
 };
-static_assert(sizeof(GPUMaterial) == 48, "GPUMaterial mismatch");
+static_assert(sizeof(GPUMaterial) == 64, "GPUMaterial mismatch");
 
 struct GPUSphere {
-    glm::vec4 position;    // offset 0 (stride 16)
-    float radius;          // offset 16
-    int _padC[3];          // pad to 32
-    GPUMaterial material;  // offset 32
+    glm::vec4 position;    
+    float radius;          
+    int _padC[3];          
+    GPUMaterial material;  
 };
-static_assert(sizeof(GPUSphere) == 80, "GPUSphere mismatch");
+static_assert(sizeof(GPUSphere) == 96, "GPUSphere mismatch");
 
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), accumulationData{ 0 }, m_frameCount(0)
@@ -44,6 +45,7 @@ void Renderer::UploadSpheres(Scene& scene)
         gs.radius = s.radius;
         gs.material.type = static_cast<int>(s.material.type);
         gs.material.albedo = s.material.albedo;
+        gs.material.emission = s.material.emission; // copy emission to GPU struct
         gs.material.roughness = s.material.roughness;
         gs.material.ior = s.material.ior;
         gpuData.push_back(gs);

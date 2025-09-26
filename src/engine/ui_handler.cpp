@@ -160,7 +160,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		ImGui::Separator();
 		ImGui::Text("Material");
 		// Material type
-		const char* materialItems[] = { "Diffuse", "Metal", "Dielectric" };
+		const char* materialItems[] = { "Diffuse", "Metal", "Dielectric" , "Light"};
 		int matType = (int)s.material.type;
 		if (ImGui::Combo("Type", &matType, materialItems, IM_ARRAYSIZE(materialItems)))
 		{
@@ -180,8 +180,19 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 		// expose alpha if needed
-		if (ImGui::InputFloat("Albedo A", &s.material.albedo.w, 0.0f, 0.0f, "%.3f"))
+		/*if (ImGui::InputFloat("Albedo A", &s.material.albedo.w, 0.0f, 0.0f, "%.3f"))
 		{
+			if (m_spheresDirty) *m_spheresDirty = true;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}*/
+
+		//emission
+		float emission[3] = { s.material.emission.x, s.material.emission.y, s.material.emission.z };
+		if (ImGui::DragFloat3("Emission", emission))
+		{
+			s.material.emission.x = emission[0];
+			s.material.emission.y = emission[1];
+			s.material.emission.z = emission[2];
 			if (m_spheresDirty) *m_spheresDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
