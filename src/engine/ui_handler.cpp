@@ -261,6 +261,12 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	ImGui::Text("Samples Per Pixel: %d  | Max Bounce: %d", samplesPerPixel, maxBounce);
 	ImGui::Text("Work Group Size: %d x %d x %d", localSizeX, localSizeY, localSizeZ);
 
+	ImGui::Separator();
+	if (ImGui::DragFloat("Background light", m_backgroundStrength, 0.0005f, 0.001f, 1.0f, "%.3f"))
+	{
+		if (m_resetAccumulation) *m_resetAccumulation = true;
+	}
+
 	// Added code for scene save/load
 	static char savePath[256] = "scene_save.bin";
 	static char loadPath[256] = "scene_save.bin";
@@ -305,10 +311,11 @@ void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, b
 	m_resetAccumulation = resetAccumulation;
 }
 
-void UI_handler::setScene(Scene* scene, bool* resetAccumulation)
+void UI_handler::setScene(Scene* scene, bool* resetAccumulation, float* backgroundStrength)
 {
 	m_scene = scene;
 	m_resetAccumulation_external = resetAccumulation;
+	m_backgroundStrength = backgroundStrength;
 }
 
 UI_handler::UI_handler()

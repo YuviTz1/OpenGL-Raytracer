@@ -93,7 +93,7 @@ void Engine::Run(Renderer &renderer)
 		&scene.m_spheresDirty,
 		&renderer.shouldResetAccumulation);
 
-	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation);
+	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation, &renderer.backgroundStrength);
 
 	while (!glfwWindowShouldClose(m_window))
 	{
@@ -141,6 +141,7 @@ void Engine::Run(Renderer &renderer)
 		/*glUniform1i(glGetUniformLocation(renderer.m_computeShader.ID, "uSphereCount"),
 			(int)renderer.m_spheres.size());*/
 		renderer.m_computeShader.setInt("uSphereCount", (int)scene.m_spheres.size());
+		renderer.m_computeShader.setFloat("uBackgroundStrength", renderer.backgroundStrength);
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 
 		renderer.accumulationData.frameCount++;

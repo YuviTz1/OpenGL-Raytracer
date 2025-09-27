@@ -37,13 +37,14 @@ public:
 		bool* spheresDirty,
 		bool* resetAccumulation);
 
-	void setScene(Scene* scene, bool* resetAccumulation);
+	void setScene(Scene* scene, bool* resetAccumulation, float* backgroundStrength);
 
 private:
 	std::vector<Sphere>* m_spheres = NULL;
 	int* m_selectedSphere = NULL;
 	bool* m_spheresDirty = NULL;
 	bool* m_resetAccumulation = NULL;
-	Scene* m_scene = nullptr;
-	bool* m_resetAccumulation_external = nullptr;
+	Scene* m_scene = NULL;
+	bool* m_resetAccumulation_external = NULL;
+	float* m_backgroundStrength = NULL;
 };

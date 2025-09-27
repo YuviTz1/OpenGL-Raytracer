@@ -6,6 +6,7 @@ layout(std140, binding = 1) uniform AccumulationBlock
     uint frameCount;
 };
 layout(rgba32f, binding = 1) uniform image2D accumulationImage;
+uniform float uBackgroundStrength;
 
 
 const float MIN_DIST = 0.0001;
@@ -288,7 +289,7 @@ vec3 sky_color(vec3 dir)
     vec3 horizon = vec3(0.94, 0.97, 1.00); // near-white horizon
     vec3 zenith  = vec3(0.529, 0.808, 0.922); // sky blue
     float smoothT = pow(t, 0.65);
-    return mix(horizon, zenith, smoothT) * 1.0; // final multiplier can be adjusted for brightness
+    return mix(horizon, zenith, smoothT) * uBackgroundStrength; // final multiplier can be adjusted for brightness
 }
 
 vec3 ray_color(Ray ray, int spheres_count)
@@ -362,7 +363,7 @@ void main()
     ivec2 dims = imageSize(screen);
     float aspect = float(dims.x) / float(dims.y);
 
-    int samples_per_pixel = 3;
+    int samples_per_pixel = 5;
     vec3 accumulated_color = vec3(0.0);
 
     for (int i=0; i<samples_per_pixel; i++)

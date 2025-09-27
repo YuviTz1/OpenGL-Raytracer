@@ -41,6 +41,8 @@ public:
 	unsigned int m_sphereSSBO = 0;
 	bool shouldResetAccumulation = false;
 
+	float backgroundStrength = 0.8f;
+
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!
 		0, 2, 1,
