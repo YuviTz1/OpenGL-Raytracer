@@ -1,16 +1,10 @@
 // helper class for shader compilation
 
 #pragma once
-
-#include <GL/glew.h> // include glew to get the required OpenGL headers
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/glm.hpp> 
 
 class Shader
 {
