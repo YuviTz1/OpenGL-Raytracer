@@ -1,7 +1,9 @@
 #include "scene.hpp"
 #include <fstream>
 #include <cstdint>
-#include <filesystem> // Add this for file existence checks
+#include <filesystem>
+#include <iostream>
+#include <sstream>
 
 int Scene::AddSphere(const Sphere& s)
 {
@@ -143,6 +145,147 @@ bool Scene::LoadFromFile(const std::string& path, bool& shouldResetAccumulation)
     return true;
 }
 
+bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAccumulation) {
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec3> normals;
+    // Optional: we parse vt but do not use it
+    std::vector<glm::vec2> texcoords;
+
+    std::ifstream file(filename);
+    if (!file.is_open()) return false;
+
+    auto fixIndex = [](int idx, size_t size) -> int {
+        // OBJ: positive indices are 1-based; negative indices are relative to the end
+        if (idx > 0) return idx - 1;
+        if (idx < 0) return static_cast<int>(size) + idx;
+        return -1; // 0 is invalid in OBJ
+    };
+
+    struct FaceElem { int v = -1; int vt = -1; int vn = -1; };
+
+    auto parseFaceToken = [](const std::string& tok) -> FaceElem {
+        // Accepts: v | v/vt | v//vn | v/vt/vn
+        FaceElem fe{};
+        int fields[3] = { 0, 0, 0 };
+        int fieldIdx = 0;
+
+        // Split by '/'
+        size_t start = 0;
+        while (start <= tok.size() && fieldIdx < 3) {
+            size_t pos = tok.find('/', start);
+            std::string part = (pos == std::string::npos) ? tok.substr(start) : tok.substr(start, pos - start);
+            if (!part.empty()) {
+                try {
+                    fields[fieldIdx] = std::stoi(part);
+                } catch (...) {
+                    fields[fieldIdx] = 0;
+                }
+            } else {
+                fields[fieldIdx] = 0; // empty means missing
+            }
+            ++fieldIdx;
+            if (pos == std::string::npos) break;
+            start = pos + 1;
+        }
+
+        fe.v  = fields[0] == 0 ? -1 : fields[0];
+        // If only two fields given, it's v/vt; if three, it's v/vt/vn
+        if (fieldIdx >= 2) fe.vt = fields[1] == 0 ? -1 : fields[1];
+        if (fieldIdx >= 3) fe.vn = fields[2] == 0 ? -1 : fields[2];
+        return fe;
+    };
+
+    std::string line;
+    while (std::getline(file, line)) {
+        // Strip comments
+        if (auto hash = line.find('#'); hash != std::string::npos) line.resize(hash);
+
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
+        if (prefix == "v") {
+            glm::vec3 pos{};
+            iss >> pos.x >> pos.y >> pos.z;
+            if (!iss.fail()) positions.push_back(pos);
+        } else if (prefix == "vn") {
+            glm::vec3 norm{};
+            iss >> norm.x >> norm.y >> norm.z;
+            if (!iss.fail()) normals.push_back(norm);
+        } else if (prefix == "vt") {
+            glm::vec2 uv{};
+            iss >> uv.x >> uv.y;
+            if (!iss.fail()) texcoords.push_back(uv);
+        } else if (prefix == "f") {
+            // Collect face tokens
+            std::vector<FaceElem> elems;
+            std::string tok;
+            while (iss >> tok) {
+                if (tok.empty()) continue;
+                elems.push_back(parseFaceToken(tok));
+            }
+
+            if (elems.size() < 3) continue; // not a face
+
+            // Triangulate fan: (0, i, i+1)
+            for (size_t i = 1; i + 1 < elems.size(); ++i) {
+                const FaceElem fe[3] = { elems[0], elems[i], elems[i + 1] };
+                int vi[3] = { -1, -1, -1 };
+                int ni[3] = { -1, -1, -1 };
+
+                bool indicesValid = true;
+
+                for (int k = 0; k < 3; ++k) {
+                    // Fix vertex indices
+                    vi[k] = fixIndex(fe[k].v, positions.size());
+                    if (vi[k] < 0 || static_cast<size_t>(vi[k]) >= positions.size()) {
+                        indicesValid = false;
+                        break;
+                    }
+                    // Fix normal indices (optional)
+                    if (fe[k].vn != -1) {
+                        ni[k] = fixIndex(fe[k].vn, normals.size());
+                        if (ni[k] < 0 || static_cast<size_t>(ni[k]) >= normals.size()) {
+                            indicesValid = false;
+                            break;
+                        }
+                    }
+                }
+                if (!indicesValid) {
+                    // Skip malformed triangle instead of crashing
+                    continue;
+                }
+
+                Triangle tri{};
+                tri.v0 = positions[vi[0]];
+                tri.v1 = positions[vi[1]];
+                tri.v2 = positions[vi[2]];
+
+                if (ni[0] >= 0 && ni[1] >= 0 && ni[2] >= 0) {
+                    tri.n0 = normals[ni[0]];
+                    tri.n1 = normals[ni[1]];
+                    tri.n2 = normals[ni[2]];
+                } else {
+                    // Compute flat normal if not present
+                    glm::vec3 e1 = tri.v1 - tri.v0;
+                    glm::vec3 e2 = tri.v2 - tri.v0;
+                    glm::vec3 n = glm::normalize(glm::cross(e1, e2));
+                    if (!std::isfinite(n.x) || !std::isfinite(n.y) || !std::isfinite(n.z)) {
+                        // Degenerate triangle; skip
+                        continue;
+                    }
+                    tri.n0 = tri.n1 = tri.n2 = n;
+                }
+
+                mesh.triangles.push_back(tri);
+            }
+        }
+        // ignore other prefixes
+    }
+
+    shouldResetAccumulation = true;
+    return !mesh.triangles.empty();
+}
+
 Scene::Scene()
 {
     Sphere ground;
@@ -159,7 +302,7 @@ Scene::Scene()
     Sun.radius = 80.0f;
     Sun.material.type = EMISSIVE;
     Sun.material.albedo = glm::vec4(0.3f, 0.3f, 0.7f, 0.0f);
-	Sun.material.emission = glm::vec4(232.0f, 232.0f, 232.0f, 0.0f); // bright "sun" light
+    Sun.material.emission = glm::vec4(232.0f, 232.0f, 232.0f, 0.0f); // bright "sun" light
     AddSphere(Sun);
 }
 

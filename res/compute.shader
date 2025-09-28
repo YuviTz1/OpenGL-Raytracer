@@ -54,7 +54,24 @@ layout(std430, binding = 1) buffer SphereBuffer
     Sphere spheres[];
 };
 
+struct Triangle {
+    vec4 v0, v1, v2;
+    vec4 n0, n1, n2;
+};
+
+struct Mesh {
+    Triangle triangles[1024];
+    Material material;
+    int triangleCount;   // Number of triangles in the mesh
+    int _padD[3]; 
+};
+
+layout(std430, binding = 2) readonly buffer MeshBuffer {
+    Mesh meshes[];
+};
+
 uniform int uSphereCount;
+uniform int uMeshCount; // NEW: number of meshes
 
 struct Ray
 {
@@ -231,6 +248,59 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
     return true;
 }
 
+// NEW: Ray-triangle intersection (Möller–Trumbore)
+bool hit_triangle(Ray ray, Mesh mesh, Triangle tri, out HitRecord rec)
+{
+    vec3 v0 = tri.v0.xyz;
+    vec3 v1 = tri.v1.xyz;
+    vec3 v2 = tri.v2.xyz;
+
+    vec3 e1 = v1 - v0;
+    vec3 e2 = v2 - v0;
+
+    vec3 pvec = cross(ray.direction, e2);
+    float det = dot(e1, pvec);
+
+    // Accept both sides, reject near-parallel
+    const float EPS = 1e-8;
+    if (abs(det) < EPS) return false;
+
+    float invDet = 1.0 / det;
+    vec3 tvec = ray.origin - v0;
+
+    float u = dot(tvec, pvec) * invDet;
+    if (u < 0.0 || u > 1.0) return false;
+
+    vec3 qvec = cross(tvec, e1);
+    float v = dot(ray.direction, qvec) * invDet;
+    if (v < 0.0 || (u + v) > 1.0) return false;
+
+    float t = dot(e2, qvec) * invDet;
+    if (t < MIN_DIST || t > MAX_DIST) return false;
+
+    rec.t = t;
+    rec.point = ray_at(t, ray);
+
+    // Interpolated normal if provided, otherwise geometric
+    float w = 1.0 - u - v;
+    vec3 shadingN = tri.n0.xyz * w + tri.n1.xyz * u + tri.n2.xyz * v;
+
+    if (dot(shadingN, shadingN) < 1e-12)
+    {
+        shadingN = normalize(cross(e1, e2));
+    }
+    else
+    {
+        shadingN = normalize(shadingN);
+    }
+
+    rec.front_face = dot(ray.direction, shadingN) < 0.0;
+    rec.normal = rec.front_face ? shadingN : -shadingN;
+    rec.material = mesh.material;
+
+    return true;
+}
+
 bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 {
     if(rec.material.type == MATERIAL_DIFFUSE)
@@ -266,7 +336,6 @@ bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
         vec3 direction;
         if (cannot_refract || schlick(cos_theta, etai_over_etat) > random_float())
         {
-            //total internal reflection
             direction = reflect(unit_direction, rec.normal);
         }
         else
@@ -304,7 +373,7 @@ vec3 ray_color(Ray ray, int spheres_count)
         float closest_t = MAX_DIST; // A large value to represent infinity
         bool hit_anything = false;
 
-        // Find the closest sphere hit
+        // Spheres
         for (int i = 0; i < spheres_count; i++)
         {
             HitRecord temp_rec;
@@ -313,6 +382,21 @@ vec3 ray_color(Ray ray, int spheres_count)
                 hit_anything = true;
                 closest_t = temp_rec.t;
                 closest_rec = temp_rec;
+            }
+        }
+
+        // Triangles
+        for (int i = 0; i < uMeshCount; i++)
+        {
+            for(int j=0;j<meshes[i].triangleCount;j++)
+            {
+                HitRecord temp_rec;
+                if (hit_triangle(ray, meshes[i], meshes[i].triangles[j], temp_rec) && temp_rec.t < closest_t)
+                {
+                    hit_anything = true;
+                    closest_t = temp_rec.t;
+                    closest_rec = temp_rec;
+                }
             }
         }
 

@@ -7,6 +7,7 @@
 
 #include "../renderer/sphere.hpp"
 #include "../renderer/material.hpp"
+#include "../renderer/mesh.hpp"
 
 class Scene
 {
@@ -17,8 +18,15 @@ public:
 	bool SaveToFile(const std::string& path);
 	bool LoadFromFile(const std::string& path, bool& shouldResetAccumulation);
 
+	bool LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAccumulation);
+
 	std::vector<Sphere> m_spheres;	
+	std::vector<Mesh> m_meshes;
 	static constexpr int MAX_SPHERES = 256;
+	static constexpr int MAX_MESHES = 256;
+	static constexpr int MAX_TRIANGLES = 1024; //todo: check for num triangles
 	int m_selectedSphereIndex = -1;
+	int m_selectedMeshIndex = -1;
 	bool m_spheresDirty = false;
+	bool m_meshesDirty = false;
 };

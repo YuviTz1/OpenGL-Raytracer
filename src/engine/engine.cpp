@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <filesystem>
 
 #include "../renderer/renderer.hpp"
 #include "../renderer/camera.hpp"
@@ -95,6 +96,21 @@ void Engine::Run(Renderer &renderer)
 
 	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation, &renderer.backgroundStrength);
 
+	// Load cube OBJ from res folder
+	namespace fs = std::filesystem;
+	std::string objPath = "res/cube.obj";
+
+	Mesh cubeMesh;
+	cubeMesh.id = "Cube";
+	if (fs::exists(objPath) && scene.LoadOBJ(objPath, cubeMesh, renderer.shouldResetAccumulation)) {
+		scene.m_meshes.push_back(std::move(cubeMesh));
+		scene.m_meshesDirty = true;
+		scene.m_selectedMeshIndex = static_cast<int>(scene.m_meshes.size()) - 1;
+	}
+	else {
+		std::cout << "Failed to load OBJ: " << objPath << "\n";
+	}
+
 	while (!glfwWindowShouldClose(m_window))
 	{
 		double frameStart = glfwGetTime();
@@ -137,10 +153,13 @@ void Engine::Run(Renderer &renderer)
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
 
 		renderer.UploadSpheres(scene);
+		renderer.UploadMeshes(scene);
+
 		renderer.m_computeShader.use();
 		/*glUniform1i(glGetUniformLocation(renderer.m_computeShader.ID, "uSphereCount"),
 			(int)renderer.m_spheres.size());*/
 		renderer.m_computeShader.setInt("uSphereCount", (int)scene.m_spheres.size());
+		renderer.m_computeShader.setInt("uMeshCount", (int)scene.m_meshes.size());
 		renderer.m_computeShader.setFloat("uBackgroundStrength", renderer.backgroundStrength);
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
 

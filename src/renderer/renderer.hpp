@@ -41,6 +41,11 @@ public:
 	unsigned int m_sphereSSBO = 0;
 	bool shouldResetAccumulation = false;
 
+	// Mesh GPU resources
+	static constexpr int MAX_MESHES = 256;
+	static constexpr int MAX_TRIANGLES = 1024;
+	unsigned int m_meshSSBO = 0;
+
 	float backgroundStrength = 0.8f;
 
 	unsigned int m_indices[6] =
@@ -65,6 +70,9 @@ public:
 	void UploadSpheres(Scene& scene);
 	void resetAccumulation();
 
+	// Mesh functions
+	void UploadMeshes(Scene& scene);
+
 private:
 	int m_width;
 	int m_height;
@@ -74,4 +82,7 @@ private:
 	void InitComputeShader();
 	void InitSphereSSBO();
 	void InitAccumulationUBOandTexture();
+
+	// Mesh init
+	void InitMeshSSBO();
 };

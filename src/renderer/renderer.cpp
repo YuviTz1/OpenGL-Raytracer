@@ -21,6 +21,19 @@ struct GPUSphere {
 };
 static_assert(sizeof(GPUSphere) == 96, "GPUSphere mismatch");
 
+struct GPUTriangle {
+    glm::vec4 v0, v1, v2; // Triangle vertices
+    glm::vec4 n0, n1, n2; // Triangle normals
+};
+
+struct GPUMesh {
+	GPUTriangle triangles[Renderer::MAX_TRIANGLES]; // Triangle data
+    GPUMaterial material;   // Material for this mesh
+	int triangleCount;   // Number of triangles in the mesh
+	int _padD[3];       // Padding for alignment
+};
+static_assert(sizeof(GPUMesh) == 98384, "GPUMesh mismatch");
+
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), accumulationData{ 0 }, m_frameCount(0)
 {
@@ -28,6 +41,7 @@ Renderer::Renderer(int width, int height)
     InitScreenTexture();
     InitComputeShader();
 	InitSphereSSBO();
+	InitMeshSSBO();
 	InitAccumulationUBOandTexture();
 }
 
@@ -56,6 +70,59 @@ void Renderer::UploadSpheres(Scene& scene)
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     scene.m_spheresDirty = false;
+    shouldResetAccumulation = true;
+}
+
+void Renderer::UploadMeshes(Scene& scene)
+{
+    if (!scene.m_meshesDirty) return;
+
+    std::vector<GPUMesh> gpuMeshData;
+    gpuMeshData.reserve(scene.MAX_MESHES);
+
+    for (const auto& mesh : scene.m_meshes)
+    {
+        GPUMesh gtm;
+        gtm.material.type = static_cast<int>(mesh.material.type);
+        gtm.material.albedo = mesh.material.albedo;
+        gtm.material.emission = mesh.material.emission;
+        gtm.material.roughness = mesh.material.roughness;
+        gtm.material.ior = mesh.material.ior;
+
+        int triIndex = 0;
+		gtm.triangleCount = static_cast<int>(mesh.triangles.size());
+
+        for (const auto& t : mesh.triangles)
+        {
+            GPUTriangle tm;
+            tm.v0 = glm::vec4(t.v0, 0.0f);
+            tm.v1 = glm::vec4(t.v1, 0.0f);
+            tm.v2 = glm::vec4(t.v2, 0.0f);
+            tm.n0 = glm::vec4(t.n0, 0.0f);
+            tm.n1 = glm::vec4(t.n1, 0.0f);
+            tm.n2 = glm::vec4(t.n2, 0.0f);
+
+			gtm.triangles[triIndex++] = tm;
+            if (triIndex >= Renderer::MAX_TRIANGLES) {
+                break; // Prevent overflow
+			}
+        }
+
+        gpuMeshData.push_back(gtm);
+    }
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
+    if (!gpuMeshData.empty()) {
+        glBufferData(GL_SHADER_STORAGE_BUFFER, gpuMeshData.size() * sizeof(GPUMesh), gpuMeshData.data(), GL_DYNAMIC_DRAW);
+    }
+    else {
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+    }
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_meshSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    scene.m_meshesDirty = false;
+    shouldResetAccumulation = true;
 }
 
 void Renderer::InitScreenTexture()
@@ -165,6 +232,15 @@ void Renderer::InitSphereSSBO()
     // Allocate max capacity upfront
     glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_SPHERES * sizeof(GPUSphere), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_sphereSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void Renderer::InitMeshSSBO()
+{
+    glGenBuffers(1, &m_meshSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_MESHES * sizeof(GPUMesh), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_meshSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
