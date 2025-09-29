@@ -27,12 +27,13 @@ struct GPUTriangle {
 };
 
 struct GPUMesh {
-	GPUTriangle triangles[Renderer::MAX_TRIANGLES]; // Triangle data
     GPUMaterial material;   // Material for this mesh
 	int triangleCount;   // Number of triangles in the mesh
-	int _padD[3];       // Padding for alignment
+	int startIndex;     // Start index in the global triangle buffer
+	int endIndex;       // End index in the global triangle buffer
+	int _padD;       // Padding for alignment
 };
-static_assert(sizeof(GPUMesh) == 98384, "GPUMesh mismatch");
+static_assert(sizeof(GPUMesh) == 80, "GPUMesh mismatch");
 
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), accumulationData{ 0 }, m_frameCount(0)
@@ -77,48 +78,55 @@ void Renderer::UploadMeshes(Scene& scene)
 {
     if (!scene.m_meshesDirty) return;
 
-    std::vector<GPUMesh> gpuMeshData;
-    gpuMeshData.reserve(scene.MAX_MESHES);
-
-    for (const auto& mesh : scene.m_meshes)
+    // 1) Pack triangles
+    std::vector<GPUTriangle> gpuTris;
+    gpuTris.reserve(scene.m_triangles.size());
+    for (const Triangle& t : scene.m_triangles)
     {
-        GPUMesh gtm;
-        gtm.material.type = static_cast<int>(mesh.material.type);
-        gtm.material.albedo = mesh.material.albedo;
-        gtm.material.emission = mesh.material.emission;
-        gtm.material.roughness = mesh.material.roughness;
-        gtm.material.ior = mesh.material.ior;
-
-        int triIndex = 0;
-		gtm.triangleCount = static_cast<int>(mesh.triangles.size());
-
-        for (const auto& t : mesh.triangles)
-        {
-            GPUTriangle tm;
-            tm.v0 = glm::vec4(t.v0, 0.0f);
-            tm.v1 = glm::vec4(t.v1, 0.0f);
-            tm.v2 = glm::vec4(t.v2, 0.0f);
-            tm.n0 = glm::vec4(t.n0, 0.0f);
-            tm.n1 = glm::vec4(t.n1, 0.0f);
-            tm.n2 = glm::vec4(t.n2, 0.0f);
-
-			gtm.triangles[triIndex++] = tm;
-            if (triIndex >= Renderer::MAX_TRIANGLES) {
-                break; // Prevent overflow
-			}
-        }
-
-        gpuMeshData.push_back(gtm);
+        GPUTriangle gt;
+        gt.v0 = glm::vec4(t.v0, 0.0f);
+        gt.v1 = glm::vec4(t.v1, 0.0f);
+        gt.v2 = glm::vec4(t.v2, 0.0f);
+        gt.n0 = glm::vec4(t.n0, 0.0f);
+        gt.n1 = glm::vec4(t.n1, 0.0f);
+        gt.n2 = glm::vec4(t.n2, 0.0f);
+        gpuTris.push_back(gt);
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
-    if (!gpuMeshData.empty()) {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, gpuMeshData.size() * sizeof(GPUMesh), gpuMeshData.data(), GL_DYNAMIC_DRAW);
+    // 2) Pack mesh metadata
+    std::vector<GPUMesh> metas;
+    metas.reserve(scene.m_meshes.size());
+    for (const Mesh& m : scene.m_meshes)
+    {
+        GPUMesh meta{};
+        meta.material.type = static_cast<int>(m.material.type);
+        meta.material.albedo = m.material.albedo;
+        meta.material.emission = m.material.emission;
+        meta.material.roughness = m.material.roughness;
+        meta.material.ior = m.material.ior;
+
+        meta.startIndex = m.startIndex;
+        meta.triangleCount = m.numTriangles;
+		meta.endIndex = m.endIndex;
+        metas.push_back(meta);
     }
-    else {
+
+    // Upload triangles
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangleSSBO);
+    if (!gpuTris.empty())
+        glBufferData(GL_SHADER_STORAGE_BUFFER, gpuTris.size() * sizeof(GPUTriangle), gpuTris.data(), GL_DYNAMIC_DRAW);
+    else
         glBufferData(GL_SHADER_STORAGE_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
-    }
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_meshSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_triangleSSBO);
+
+    // Upload mesh metas
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
+    if (!metas.empty())
+        glBufferData(GL_SHADER_STORAGE_BUFFER, metas.size() * sizeof(GPUMesh), metas.data(), GL_DYNAMIC_DRAW);
+    else
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshSSBO);
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     scene.m_meshesDirty = false;
@@ -237,10 +245,18 @@ void Renderer::InitSphereSSBO()
 
 void Renderer::InitMeshSSBO()
 {
+    // Triangles buffer (binding 2)
+    glGenBuffers(1, &m_triangleSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangleSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_TRIANGLES * sizeof(GPUTriangle), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_triangleSSBO);
+
+    // Mesh metadata buffer (binding 3)
     glGenBuffers(1, &m_meshSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_MESHES * sizeof(GPUMesh), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_meshSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshSSBO);
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 

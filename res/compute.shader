@@ -60,13 +60,18 @@ struct Triangle {
 };
 
 struct Mesh {
-    Triangle triangles[1024];
     Material material;
     int triangleCount;   // Number of triangles in the mesh
-    int _padD[3]; 
+    int startIndex;
+    int endIndex;
+    int _padD[1]; 
 };
 
-layout(std430, binding = 2) readonly buffer MeshBuffer {
+layout(std430, binding = 2) readonly buffer TriangleBuffer {
+    Triangle triangles[];
+};
+
+layout(std430, binding = 3) readonly buffer MeshBuffer {
     Mesh meshes[];
 };
 
@@ -249,7 +254,7 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 }
 
 // NEW: Ray-triangle intersection (Möller–Trumbore)
-bool hit_triangle(Ray ray, Mesh mesh, Triangle tri, out HitRecord rec)
+bool hit_triangle(Ray ray, Material material, Triangle tri, out HitRecord rec)
 {
     vec3 v0 = tri.v0.xyz;
     vec3 v1 = tri.v1.xyz;
@@ -296,7 +301,7 @@ bool hit_triangle(Ray ray, Mesh mesh, Triangle tri, out HitRecord rec)
 
     rec.front_face = dot(ray.direction, shadingN) < 0.0;
     rec.normal = rec.front_face ? shadingN : -shadingN;
-    rec.material = mesh.material;
+    rec.material = material;
 
     return true;
 }
@@ -388,10 +393,14 @@ vec3 ray_color(Ray ray, int spheres_count)
         // Triangles
         for (int i = 0; i < uMeshCount; i++)
         {
-            for(int j=0;j<meshes[i].triangleCount;j++)
+            int start = meshes[i].startIndex;
+            int count = meshes[i].triangleCount;
+
+            for (int j = 0; j < count; j++) 
             {
+                Triangle tri = triangles[start + j];
                 HitRecord temp_rec;
-                if (hit_triangle(ray, meshes[i], meshes[i].triangles[j], temp_rec) && temp_rec.t < closest_t)
+                if (hit_triangle(ray, meshes[i].material, tri, temp_rec) && temp_rec.t < closest_t) 
                 {
                     hit_anything = true;
                     closest_t = temp_rec.t;
@@ -399,6 +408,7 @@ vec3 ray_color(Ray ray, int spheres_count)
                 }
             }
         }
+
 
         if (hit_anything)
         {

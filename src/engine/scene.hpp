@@ -22,6 +22,7 @@ public:
 
 	std::vector<Sphere> m_spheres;	
 	std::vector<Mesh> m_meshes;
+	std::vector<Triangle> m_triangles; // all triangles from all meshes
 	static constexpr int MAX_SPHERES = 256;
 	static constexpr int MAX_MESHES = 256;
 	static constexpr int MAX_TRIANGLES = 1024; //todo: check for num triangles

@@ -145,7 +145,8 @@ bool Scene::LoadFromFile(const std::string& path, bool& shouldResetAccumulation)
     return true;
 }
 
-bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAccumulation) {
+bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAccumulation)
+{
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
     // Optional: we parse vt but do not use it
@@ -194,6 +195,9 @@ bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAc
         if (fieldIdx >= 3) fe.vn = fields[2] == 0 ? -1 : fields[2];
         return fe;
     };
+
+    const int start = static_cast<int>(m_triangles.size());
+    int added = 0;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -276,14 +280,23 @@ bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAc
                     tri.n0 = tri.n1 = tri.n2 = n;
                 }
 
-                mesh.triangles.push_back(tri);
+                m_triangles.push_back(tri);
+                added++;
             }
         }
         // ignore other prefixes
     }
 
+    if (added == 0) return false;
+
+    mesh.startIndex = start;
+    mesh.numTriangles = added;
+    mesh.endIndex = start + added; // optional
+    m_meshes.push_back(mesh);
+
+    m_meshesDirty = true;
     shouldResetAccumulation = true;
-    return !mesh.triangles.empty();
+    return true;
 }
 
 Scene::Scene()

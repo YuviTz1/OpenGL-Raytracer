@@ -44,7 +44,8 @@ public:
 	// Mesh GPU resources
 	static constexpr int MAX_MESHES = 256;
 	static constexpr int MAX_TRIANGLES = 1024;
-	unsigned int m_meshSSBO = 0;
+	unsigned int m_meshSSBO = 0;      // MeshMeta buffer (binding 3)
+	unsigned int m_triangleSSBO = 0;  // Triangles buffer (binding 2)
 
 	float backgroundStrength = 0.8f;
 
