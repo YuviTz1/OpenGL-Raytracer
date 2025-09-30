@@ -379,7 +379,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
 			{
 				m.id = std::string(nameBuf);
-				// Mark meshes dirty and reset accumulation
+				if (m_scene) m_scene->m_meshesDirty = true;           // mark dirty so renderer re-uploads
 				if (m_resetAccumulation) *m_resetAccumulation = true;
 			}
 		}
@@ -390,6 +390,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		if (ImGui::Combo("Type", &matType, materialItems, IM_ARRAYSIZE(materialItems)))
 		{
 			m.material.type = (MaterialType)matType;
+			if (m_scene) m_scene->m_meshesDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
@@ -399,6 +400,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			m.material.albedo.x = albedo[0];
 			m.material.albedo.y = albedo[1];
 			m.material.albedo.z = albedo[2];
+			if (m_scene) m_scene->m_meshesDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
@@ -408,15 +410,18 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 			m.material.emission.x = emission[0];
 			m.material.emission.y = emission[1];
 			m.material.emission.z = emission[2];
+			if (m_scene) m_scene->m_meshesDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
 		if (ImGui::SliderFloat("Roughness", &m.material.roughness, 0.0f, 1.0f))
 		{
+			if (m_scene) m_scene->m_meshesDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 		if (ImGui::SliderFloat("IOR", &m.material.ior, 1.0f, 3.0f))
 		{
+			if (m_scene) m_scene->m_meshesDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
