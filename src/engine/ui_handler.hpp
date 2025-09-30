@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include "../renderer/sphere.hpp"
+#include "../renderer/mesh.hpp"
 
 class Scene; // forward declare
 
@@ -31,11 +32,13 @@ public:
 		int samplesPerPixel, int maxBounce,
 		int localSizeX, int localSizeY, int localSizeZ);
 
-	// New binding
-	void bindSpheres(std::vector<Sphere>* spheres,
-		int* selectedIndex,
+	// Updated binding: adds selected mesh index
+	void bindPointers(std::vector<Sphere>* spheres,
+		int* selectedSphereIndex,
 		bool* spheresDirty,
-		bool* resetAccumulation);
+		bool* resetAccumulation,
+		std::vector<Mesh>* meshes,
+		int* selectedMeshIndex);
 
 	void setScene(Scene* scene, bool* resetAccumulation, float* backgroundStrength);
 
@@ -44,6 +47,10 @@ private:
 	int* m_selectedSphere = NULL;
 	bool* m_spheresDirty = NULL;
 	bool* m_resetAccumulation = NULL;
+
+	std::vector<Mesh>* m_meshes = NULL;
+	int* m_selectedMesh = NULL;
+
 	Scene* m_scene = NULL;
 	bool* m_resetAccumulation_external = NULL;
 	float* m_backgroundStrength = NULL;

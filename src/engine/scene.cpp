@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <sstream>
+#include <algorithm> // added
 
 int Scene::AddSphere(const Sphere& s)
 {
@@ -293,6 +294,46 @@ bool Scene::LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAc
     mesh.numTriangles = added;
     mesh.endIndex = start + added; // optional
     m_meshes.push_back(mesh);
+
+    m_meshesDirty = true;
+    shouldResetAccumulation = true;
+    return true;
+}
+
+bool Scene::RemoveMesh(int index, bool& shouldResetAccumulation)
+{
+    shouldResetAccumulation = false;
+    if (index < 0 || index >= (int)m_meshes.size()) {
+        return false;
+    }
+
+    // Determine triangle range to remove, clamped for safety
+    const Mesh& victim = m_meshes[index];
+    int start = std::clamp(victim.startIndex, 0, (int)m_triangles.size());
+    int end   = std::clamp(victim.endIndex,   start, (int)m_triangles.size());
+    int count = std::max(0, end - start);
+
+    // Remove triangles for this mesh
+    if (count > 0) {
+        m_triangles.erase(m_triangles.begin() + start, m_triangles.begin() + end);
+    }
+
+    // Adjust subsequent meshes' triangle indices
+    for (int i = index + 1; i < (int)m_meshes.size(); ++i) {
+        m_meshes[i].startIndex -= count;
+        m_meshes[i].endIndex   -= count;
+    }
+
+    // Remove the mesh entry
+    m_meshes.erase(m_meshes.begin() + index);
+
+    // Update selection
+    if (m_meshes.empty()) {
+        m_selectedMeshIndex = -1;
+    } else {
+        if (index >= (int)m_meshes.size()) m_selectedMeshIndex = (int)m_meshes.size() - 1;
+        else m_selectedMeshIndex = index;
+    }
 
     m_meshesDirty = true;
     shouldResetAccumulation = true;

@@ -89,15 +89,17 @@ void Engine::Run(Renderer &renderer)
 
 	const double targetFrameTime = 1.0 / 60.0;  // 60 FPS cap
 
-	m_ui_handler->bindSpheres(&scene.m_spheres,
+	m_ui_handler->bindPointers(&scene.m_spheres,
 		&scene.m_selectedSphereIndex,
 		&scene.m_spheresDirty,
-		&renderer.shouldResetAccumulation);
+		&renderer.shouldResetAccumulation,
+		&scene.m_meshes,
+		&scene.m_selectedMeshIndex);
 
 	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation, &renderer.backgroundStrength);
 
 	// Load cube OBJ from res folder
-	namespace fs = std::filesystem;
+	/*namespace fs = std::filesystem;
 	std::string objPath = "res/cube.obj";
 
 	Mesh cubeMesh;
@@ -109,7 +111,7 @@ void Engine::Run(Renderer &renderer)
 	}
 	else {
 		std::cout << "Failed to load OBJ: " << objPath << "\n";
-	}
+	}*/
 
 	while (!glfwWindowShouldClose(m_window))
 	{

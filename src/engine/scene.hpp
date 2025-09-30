@@ -19,6 +19,7 @@ public:
 	bool LoadFromFile(const std::string& path, bool& shouldResetAccumulation);
 
 	bool LoadOBJ(const std::string& filename, Mesh& mesh, bool& shouldResetAccumulation);
+	bool RemoveMesh(int index, bool& shouldResetAccumulation); // NEW
 
 	std::vector<Sphere> m_spheres;	
 	std::vector<Mesh> m_meshes;

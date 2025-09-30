@@ -1,6 +1,8 @@
 #include "ui_handler.hpp"
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
+#include <string>
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -39,28 +41,85 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 
 	ImGui::Begin("Sidebar", nullptr, flags);
 
-	ImGui::Text("Scene");
+	// Split the left sidebar into two vertical children:
+	// - Top half: Combined list (spheres + meshes) and sphere actions
+	// - Bottom half: .obj browser in res with Load buttons
+	const float availY = ImGui::GetContentRegionAvail().y;
+	const float topH   = std::max(0.0f, availY * 0.5f);
+	const float bottomH = std::max(0.0f, availY - topH);
+
+	// ---------------- Top Half ----------------
+	ImGui::BeginChild("TopHalf", ImVec2(0.0f, topH), false);
+
+	ImGui::Text("Scene Objects");
 	ImGui::Separator();
 
+	const int sphereCount = (m_spheres ? (int)m_spheres->size() : 0);
+	const int meshCount   = (m_meshes ? (int)m_meshes->size() : 0);
+
+	// Compute combined selection index for UI
+	int combinedSelected = -1;
+	if (m_selectedSphere && *m_selectedSphere >= 0) {
+		combinedSelected = *m_selectedSphere; // spheres first
+	} else if (m_selectedMesh && *m_selectedMesh >= 0) {
+		combinedSelected = sphereCount + *m_selectedMesh;
+	}
+
+	// List spheres
+	for (int i = 0; i < sphereCount; ++i)
+	{
+		const Sphere& s = (*m_spheres)[i];
+		char label[128];
+		std::snprintf(label, sizeof(label), "Sphere: %s##sphere_%d", s.id.c_str(), i);
+		bool sel = (combinedSelected == i);
+		if (ImGui::Selectable(label, sel))
+		{
+			if (m_selectedSphere) *m_selectedSphere = i;
+			if (m_selectedMesh) *m_selectedMesh = -1;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+	}
+
+	// List meshes with triangle counts
+	for (int i = 0; i < meshCount; ++i)
+	{
+		const Mesh& m = (*m_meshes)[i];
+		char label[160];
+		std::snprintf(label, sizeof(label), "Mesh: %s (%d tris)##mesh_%d", m.id.c_str(), m.numTriangles, i);
+		bool sel = (combinedSelected == (sphereCount + i));
+		if (ImGui::Selectable(label, sel))
+		{
+			if (m_selectedSphere) *m_selectedSphere = -1;
+			if (m_selectedMesh) *m_selectedMesh = i;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+	}
+
+	ImGui::Separator();
+
+	// Sphere actions
 	if (m_spheres)
 	{
-		ImGui::Separator();
 		if (ImGui::Button("Add Sphere"))
 		{
 			Sphere s;
+			s.id = "Sphere";
 			s.position = glm::vec4(0.0f, 0.0f, -6.0f, 0.0f);
 			s.radius = 1.0f;
 			s.material.type = DIFFUSE;
 			s.material.albedo = glm::vec4(0.7f, 0.3f, 0.3f, 0.0f);
 			m_spheres->push_back(s);
 			if (m_selectedSphere) *m_selectedSphere = (int)m_spheres->size() - 1;
+			if (m_selectedMesh) *m_selectedMesh = -1;
 			if (m_spheresDirty) *m_spheresDirty = true;
 			if (m_resetAccumulation) *m_resetAccumulation = true;
 		}
 
-		if (!m_spheres->empty())
+		// Delete only if a sphere is selected
+		if (m_selectedSphere && *m_selectedSphere >= 0 && !m_spheres->empty())
 		{
-			if (ImGui::Button("Delete Selected") && m_selectedSphere && *m_selectedSphere >= 0)
+			ImGui::SameLine();
+			if (ImGui::Button("Delete Sphere"))
 			{
 				int idx = *m_selectedSphere;
 				if (idx >= 0 && idx < (int)m_spheres->size())
@@ -72,24 +131,113 @@ void UI_handler::left_sidebar(float deltaTime, float sidebarWidth)
 					else *m_selectedSphere = std::min(idx, (int)m_spheres->size() - 1);
 				}
 			}
-			ImGui::Separator();
-			for (int i = 0; i < (int)m_spheres->size(); ++i)
+		}
+	}
+
+	// Mesh actions
+	if (m_selectedMesh && *m_selectedMesh >= 0 && m_meshes && !m_meshes->empty())
+	{
+		if (ImGui::Button("Delete Mesh"))
+		{
+			if (m_scene)
 			{
-				char label[32];
-				//snprintf(label, 32, "Sphere %d", i);
-				std::snprintf(label, 32, "%s##%d", (*m_spheres)[i].id.c_str(), i); // use id as label, but ensure unique with ##
-				bool sel = (m_selectedSphere && *m_selectedSphere == i);
-				if (ImGui::Selectable(label, sel))
+				bool shouldReset = false;
+				const int idx = *m_selectedMesh;
+				if (m_scene->RemoveMesh(idx, shouldReset))
 				{
-					if (m_selectedSphere) *m_selectedSphere = i;
-					if (m_resetAccumulation) *m_resetAccumulation = true;
+					// Selection is updated inside Scene::RemoveMesh (m_selectedMeshIndex)
+					if (m_resetAccumulation_external && shouldReset)
+						*m_resetAccumulation_external = true;
 				}
 			}
 		}
 	}
-	
 
-	// Additional controls can go here
+	ImGui::EndChild(); // TopHalf
+
+	// ---------------- Bottom Half ----------------
+	ImGui::BeginChild("BottomHalf", ImVec2(0.0f, bottomH), false);
+
+	ImGui::Text("OBJ Browser");
+	ImGui::Separator();
+
+	// Folder input (defaults to "res")
+	static char objFolder[260] = "res";
+	ImGui::InputText("Folder", objFolder, sizeof(objFolder));
+
+	// Discover .obj files in folder each frame (simple, fine for small folders)
+	std::vector<std::filesystem::path> objFiles;
+	{
+		std::error_code ec;
+		const std::filesystem::path root = std::filesystem::path(objFolder);
+		if (std::filesystem::exists(root, ec) && std::filesystem::is_directory(root, ec))
+		{
+			for (auto it = std::filesystem::directory_iterator(root, ec); !ec && it != std::filesystem::end(it); it.increment(ec))
+			{
+				const auto& p = it->path();
+				if (!it->is_regular_file(ec)) continue;
+				auto ext = p.extension().string();
+				std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+				if (ext == ".obj") objFiles.push_back(p);
+			}
+			std::sort(objFiles.begin(), objFiles.end(), [](const auto& a, const auto& b) { return a.filename().string() < b.filename().string(); });
+		}
+	}
+
+	static char loadStatus[128] = "";
+	if (objFiles.empty())
+	{
+		ImGui::TextDisabled("No .obj files found");
+	}
+	else
+	{
+		// Scrollable list
+		if (ImGui::BeginChild("OBJList", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing()), true))
+		{
+			for (int i = 0; i < (int)objFiles.size(); ++i)
+			{
+				const auto& p = objFiles[i];
+				const std::string fname = p.filename().string();
+
+				ImGui::Text("%s", fname.c_str());
+				ImGui::SameLine();
+				char btnId[64];
+				std::snprintf(btnId, sizeof(btnId), "Load##obj_%d", i);
+				if (ImGui::Button(btnId))
+				{
+					if (m_scene)
+					{
+						Mesh mesh{};
+						mesh.id = p.stem().string();
+						bool shouldReset = false;
+						const std::string full = p.string();
+
+						if (m_scene->LoadOBJ(full, mesh, shouldReset))
+						{
+							std::snprintf(loadStatus, sizeof(loadStatus), "Loaded: %s", fname.c_str());
+							// Select the newly loaded mesh
+							if (m_selectedSphere) *m_selectedSphere = -1;
+							if (m_selectedMesh && m_meshes) *m_selectedMesh = (int)m_meshes->size() - 1;
+							if (m_resetAccumulation_external && shouldReset) *m_resetAccumulation_external = true;
+						}
+						else
+						{
+							std::snprintf(loadStatus, sizeof(loadStatus), "Failed to load: %s", fname.c_str());
+						}
+					}
+					else
+					{
+						std::snprintf(loadStatus, sizeof(loadStatus), "No active scene to load into");
+					}
+				}
+			}
+			ImGui::EndChild();
+		}
+
+		ImGui::Text("%s", loadStatus);
+	}
+
+	ImGui::EndChild(); // BottomHalf
 
 	ImGui::End();
 }
@@ -117,8 +265,11 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 	ImGui::Text("Properties");
 	ImGui::Separator();
 
-	// Selected sphere inspector
-	if (m_spheres && m_selectedSphere && *m_selectedSphere >= 0 && *m_selectedSphere < (int)m_spheres->size())
+	const bool hasSphereSel = (m_spheres && m_selectedSphere && *m_selectedSphere >= 0 && *m_selectedSphere < (int)m_spheres->size());
+	const bool hasMeshSel   = (m_meshes  && m_selectedMesh   && *m_selectedMesh   >= 0 && *m_selectedMesh   < (int)m_meshes->size());
+
+	// Sphere inspector
+	if (hasSphereSel)
 	{
 		int idx = *m_selectedSphere;
 		Sphere& s = (*m_spheres)[idx];
@@ -211,11 +362,72 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 
 		ImGui::Separator();
 	}
-	else
+	// Mesh inspector
+	else if (hasMeshSel)
 	{
-		ImGui::Text("No sphere selected");
+		int idx = *m_selectedMesh;
+		Mesh& m = (*m_meshes)[idx];
+
+		ImGui::Text("Selected Mesh: %s", m.id.c_str());
+		ImGui::Text("Triangles: %d", m.numTriangles);
+		ImGui::Separator();
+
+		// Name / ID (editable)
+		{
+			char nameBuf[64] = {0};
+			std::strncpy(nameBuf, m.id.c_str(), sizeof(nameBuf) - 1);
+			if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf)))
+			{
+				m.id = std::string(nameBuf);
+				// Mark meshes dirty and reset accumulation
+				if (m_resetAccumulation) *m_resetAccumulation = true;
+			}
+		}
+
+		ImGui::Text("Material");
+		const char* materialItems[] = { "Diffuse", "Metal", "Dielectric" , "Light"};
+		int matType = (int)m.material.type;
+		if (ImGui::Combo("Type", &matType, materialItems, IM_ARRAYSIZE(materialItems)))
+		{
+			m.material.type = (MaterialType)matType;
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+
+		float albedo[3] = { m.material.albedo.x, m.material.albedo.y, m.material.albedo.z };
+		if (ImGui::ColorEdit3("Albedo", albedo))
+		{
+			m.material.albedo.x = albedo[0];
+			m.material.albedo.y = albedo[1];
+			m.material.albedo.z = albedo[2];
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+
+		float emission[3] = { m.material.emission.x, m.material.emission.y, m.material.emission.z };
+		if (ImGui::DragFloat3("Emission", emission))
+		{
+			m.material.emission.x = emission[0];
+			m.material.emission.y = emission[1];
+			m.material.emission.z = emission[2];
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+
+		if (ImGui::SliderFloat("Roughness", &m.material.roughness, 0.0f, 1.0f))
+		{
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+		if (ImGui::SliderFloat("IOR", &m.material.ior, 1.0f, 3.0f))
+		{
+			if (m_resetAccumulation) *m_resetAccumulation = true;
+		}
+
 		ImGui::Separator();
 	}
+	else
+	{
+		ImGui::Text("No object selected");
+		ImGui::Separator();
+	}
+
 	ImGui::End();
 }
 
@@ -303,12 +515,15 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	ImGui::End();
 }
 
-void UI_handler::bindSpheres(std::vector<Sphere>* spheres, int* selectedIndex, bool* spheresDirty, bool* resetAccumulation)
+void UI_handler::bindPointers(std::vector<Sphere>* spheres, int* selectedSphereIndex, bool* spheresDirty, bool* resetAccumulation, std::vector<Mesh>* meshes, int* selectedMeshIndex)
 {
 	m_spheres = spheres;
-	m_selectedSphere = selectedIndex;
+	m_selectedSphere = selectedSphereIndex;
 	m_spheresDirty = spheresDirty;
 	m_resetAccumulation = resetAccumulation;
+
+	m_meshes = meshes;
+	m_selectedMesh = selectedMeshIndex;
 }
 
 void UI_handler::setScene(Scene* scene, bool* resetAccumulation, float* backgroundStrength)
