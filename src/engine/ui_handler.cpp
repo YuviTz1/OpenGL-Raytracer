@@ -3,6 +3,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <cstdint>
 
 #include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
@@ -10,6 +11,25 @@
 #include "../renderer/camera.hpp"
 #include "../renderer/renderer.hpp"
 #include "scene.hpp" // Add this include
+
+// format unsigned integer with commas for readability
+static std::string format_with_commas(uint64_t value)
+{
+    if (value == 0) return "0";
+    std::string s;
+    int count = 0;
+    while (value > 0) {
+        int digit = static_cast<int>(value % 10);
+        s.push_back(static_cast<char>('0' + digit));
+        value /= 10;
+        if (++count == 3 && value > 0) {
+            s.push_back(',');
+            count = 0;
+        }
+    }
+    std::reverse(s.begin(), s.end());
+    return s;
+}
 
 void UI_handler::render()
 {
@@ -369,7 +389,7 @@ void UI_handler::right_sidebar(float renderStartX, float renderWidth, float wind
 		Mesh& m = (*m_meshes)[idx];
 
 		ImGui::Text("Selected Mesh: %s", m.id.c_str());
-		ImGui::Text("Triangles: %d", m.numTriangles);
+		ImGui::Text("Triangles: %s", format_with_commas((uint64_t)m.numTriangles).c_str());
 		ImGui::Separator();
 
 		// Name / ID (editable)
@@ -441,7 +461,8 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	int viewportWidth, int viewportHeight,
 	int windowWidth, int windowHeight,
 	int samplesPerPixel, int maxBounce,
-	int localSizeX, int localSizeY, int localSizeZ)
+	int localSizeX, int localSizeY, int localSizeZ,
+	bool* debugStatsEnabled, const RenderStats* stats)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	float barH = std::max(0.0f, bottomBarHeight);
@@ -482,6 +503,25 @@ void UI_handler::bottom_bar(float fps, float* zoom,
 	if (ImGui::DragFloat("Background light", m_backgroundStrength, 0.0005f, 0.001f, 1.0f, "%.3f"))
 	{
 		if (m_resetAccumulation) *m_resetAccumulation = true;
+	}
+
+	// Debug stats toggle and display
+	ImGui::Separator();
+	if (ImGui::Checkbox("Enable GPU Debug Stats", debugStatsEnabled))
+	{
+		// nothing else here; engine will act on this
+	}
+
+	if (debugStatsEnabled && *debugStatsEnabled && stats)
+	{
+		ImGui::Text("Rays Sent: %s", format_with_commas((uint64_t)stats->raysSent).c_str());
+		ImGui::Text("Sphere Tests: %s", format_with_commas((uint64_t)stats->sphereTests).c_str());
+		ImGui::Text("Triangle Tests: %s", format_with_commas((uint64_t)stats->triangleTests).c_str());
+		ImGui::Text("Sphere Hits: %s", format_with_commas((uint64_t)stats->sphereHits).c_str());
+		ImGui::Text("Triangle Hits: %s", format_with_commas((uint64_t)stats->triangleHits).c_str());
+		ImGui::Text("Bounces: %s", format_with_commas((uint64_t)stats->bounces).c_str());
+		ImGui::Text("Light Hits: %s", format_with_commas((uint64_t)stats->lightHits).c_str());
+		ImGui::Text("Misses: %s", format_with_commas((uint64_t)stats->misses).c_str());
 	}
 
 	// Added code for scene save/load

@@ -4,6 +4,21 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 layout(rgba32f, binding = 1) uniform image2D accumulationImage;
 uniform float uBackgroundStrength;
 
+// Debugging toggle
+uniform bool uDebugStatsEnabled;
+
+// Stats SSBO
+layout(std430, binding = 4) buffer StatsBuffer
+{
+    uint raysSent;
+    uint sphereTests;
+    uint triangleTests;
+    uint sphereHits;     // new: successful sphere intersections
+    uint triangleHits;   // new: successful triangle intersections
+    uint bounces;
+    uint lightHits;
+    uint misses;
+};
 
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
@@ -223,6 +238,8 @@ float schlick(float cos, float ref_idx)
 
 bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
 {
+    if (uDebugStatsEnabled) atomicAdd(sphereTests, 1u);
+
     vec3 oc = ray.origin - sphere.position.xyz;
     float a = dot(ray.direction, ray.direction);
     float b = 2.0 * dot(oc, ray.direction);
@@ -251,12 +268,15 @@ bool hit_sphere(Ray ray, Sphere sphere, out HitRecord rec)
     rec.normal = normalize(rec.front_face ? outward_normal : -outward_normal);
     rec.material = sphere.material;
 
+    if (uDebugStatsEnabled) atomicAdd(sphereHits, 1u);
     return true;
 }
 
 // NEW: Ray-triangle intersection (Möller–Trumbore)
 bool hit_triangle(Ray ray, Material material, Triangle tri, out HitRecord rec)
 {
+    if (uDebugStatsEnabled) atomicAdd(triangleTests, 1u);
+
     vec3 v0 = tri.v0.xyz;
     vec3 v1 = tri.v1.xyz;
     vec3 v2 = tri.v2.xyz;
@@ -304,6 +324,7 @@ bool hit_triangle(Ray ray, Material material, Triangle tri, out HitRecord rec)
     rec.normal = rec.front_face ? shadingN : -shadingN;
     rec.material = material;
 
+    if (uDebugStatsEnabled) atomicAdd(triangleHits, 1u);
     return true;
 }
 
@@ -375,6 +396,8 @@ vec3 ray_color(Ray ray, int spheres_count)
 
     for (int bounce = 0; bounce < max_bounces; bounce++)
     {
+        if (uDebugStatsEnabled) atomicAdd(raysSent, 1u);
+
         HitRecord closest_rec;
         float closest_t = MAX_DIST; // A large value to represent infinity
         bool hit_anything = false;
@@ -416,6 +439,7 @@ vec3 ray_color(Ray ray, int spheres_count)
             // If hit a light, return its emission and terminate
             if (closest_rec.material.type == MATERIAL_LIGHT)
             {
+                if (uDebugStatsEnabled) atomicAdd(lightHits, 1u);
                 return accumulated_color * closest_rec.material.emission.xyz;
             }
 
@@ -423,6 +447,7 @@ vec3 ray_color(Ray ray, int spheres_count)
             vec3 attenuation;
             if (scatter(ray, closest_rec, attenuation, scattered))
             {
+                if (uDebugStatsEnabled) atomicAdd(bounces, 1u);
                 accumulated_color *= attenuation; // Accumulate color
                 ray = scattered;         // Update ray for the next bounce
 
@@ -439,6 +464,7 @@ vec3 ray_color(Ray ray, int spheres_count)
         else
         {
             // No hit: return faint background
+            if (uDebugStatsEnabled) atomicAdd(misses, 1u);
             return accumulated_color * sky_color(ray.direction);
         }
     }

@@ -144,12 +144,24 @@ void Engine::Run(Renderer &renderer)
 		renderer.UploadMeshes(scene);
 
 		renderer.m_computeShader.use();
-		/*glUniform1i(glGetUniformLocation(renderer.m_computeShader.ID, "uSphereCount"),
-			(int)renderer.m_spheres.size());*/
 		renderer.m_computeShader.setInt("uSphereCount", (int)scene.m_spheres.size());
 		renderer.m_computeShader.setInt("uMeshCount", (int)scene.m_meshes.size());
 		renderer.m_computeShader.setFloat("uBackgroundStrength", renderer.backgroundStrength);
+		renderer.m_computeShader.setBool("uDebugStatsEnabled", renderer.debugStatsEnabled);
+
+		if (renderer.debugStatsEnabled)
+		{
+			// clear stats before dispatch
+			renderer.ResetStatsBuffer();
+		}
+
 		renderer.m_computeShader.use_compute(groupCountX, groupCountY, 1);
+
+		// read back stats if enabled
+		if (renderer.debugStatsEnabled)
+		{
+			renderer.ReadStatsBuffer();
+		}
 
 		renderer.accumulationData.frameCount++;
 		if (renderer.shouldResetAccumulation) {
@@ -187,7 +199,8 @@ void Engine::Run(Renderer &renderer)
 			m_renderWidth, m_renderHeight,   // viewport (render target) size
 			fbW, fbH,                        // window/framebuffer size
 			5, 5,                            // samples per pixel, max bounce (hardcoded)
-			groupCountX, groupCountY, localSizeZ);
+			groupCountX, groupCountY, localSizeZ,
+			&renderer.debugStatsEnabled, &renderer.stats);
 
 		renderer.m_QuadShader.use();
 		glBindTextureUnit(0, renderer.m_screenTex);
@@ -213,13 +226,13 @@ void Engine::Run(Renderer &renderer)
 		}
 
 		// Frame limiting (sleep based on glfw time)
-		double frameEnd = glfwGetTime();
+		/*double frameEnd = glfwGetTime();
 		double frameDuration = frameEnd - frameStart;
 		if (frameDuration < targetFrameTime)
 		{
 			double sleepSeconds = targetFrameTime - frameDuration;
 			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
-		}
+		}*/
 
 		// Persist last frame start in member (in case Run() is ever re-entered)
 		m_previousTime = lastFrameStart;

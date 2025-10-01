@@ -8,6 +8,7 @@
 #include "../renderer/mesh.hpp"
 
 class Scene; // forward declare
+struct RenderStats; // forward declare GPU stats struct
 
 class UI_handler
 {
@@ -30,7 +31,8 @@ public:
 		int viewportWidth, int viewportHeight,
 		int windowWidth, int windowHeight,
 		int samplesPerPixel, int maxBounce,
-		int localSizeX, int localSizeY, int localSizeZ);
+		int localSizeX, int localSizeY, int localSizeZ,
+		bool* debugStatsEnabled, const RenderStats* stats);
 
 	// Updated binding: adds selected mesh index
 	void bindPointers(std::vector<Sphere>* spheres,

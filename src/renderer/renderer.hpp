@@ -23,6 +23,18 @@ struct AccumulationData {
 	unsigned int padding[3];
 };
 
+// Statistics gathered on GPU (must match compute shader StatsBuffer layout)
+struct RenderStats {
+	unsigned int raysSent;
+	unsigned int sphereTests;
+	unsigned int triangleTests;
+	unsigned int sphereHits;    // match compute shader order
+	unsigned int triangleHits;  // match compute shader order
+	unsigned int bounces;
+	unsigned int lightHits;
+	unsigned int misses;
+};
+
 class Renderer
 {
 public:
@@ -50,6 +62,11 @@ public:
 
 	float backgroundStrength = 0.8f;
 
+	// Stats and debug
+	bool debugStatsEnabled = false;
+	unsigned int m_statsSSBO = 0; // binding 4
+	RenderStats stats{};          // CPU mirror of GPU stats
+
 	unsigned int m_indices[6] =
 	{  // note that we start from 0!
 		0, 2, 1,
@@ -74,6 +91,11 @@ public:
 
 	// Mesh functions
 	void UploadMeshes(Scene& scene);
+
+	// Stats functions
+	void InitStatsSSBO();
+	void ResetStatsBuffer();
+	void ReadStatsBuffer();
 
 private:
 	int m_width;

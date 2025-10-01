@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 #include "stb_image.h"
 #include "imgui.h"
+#include <cstring>
 
 struct GPUMaterial {
     int type;              
@@ -44,6 +45,7 @@ Renderer::Renderer(int width, int height)
 	InitSphereSSBO();
 	InitMeshSSBO();
 	InitAccumulationUBOandTexture();
+	InitStatsSSBO();
 }
 
 void Renderer::UploadSpheres(Scene& scene)
@@ -197,6 +199,41 @@ void Renderer::InitAccumulationUBOandTexture()
     glTextureParameteri(m_accumulationTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTextureStorage2D(m_accumulationTexture, 1, GL_RGBA32F, m_width, m_height);
     glBindImageTexture(1, m_accumulationTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+}
+
+void Renderer::InitStatsSSBO()
+{
+    glGenBuffers(1, &m_statsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_statsSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(RenderStats), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_statsSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    ResetStatsBuffer();
+}
+
+void Renderer::ResetStatsBuffer()
+{
+    RenderStats zero{};
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_statsSSBO);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(RenderStats), &zero);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void Renderer::ReadStatsBuffer()
+{
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_statsSSBO);
+    void* ptr = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(RenderStats), GL_MAP_READ_BIT);
+    if (ptr)
+    {
+        std::memcpy(&stats, ptr, sizeof(RenderStats));
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    }
+    else
+    {
+        // Fallback using glGetBufferSubData
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(RenderStats), &stats);
+    }
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void Renderer::updateAccumulation()
