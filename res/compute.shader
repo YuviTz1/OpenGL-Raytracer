@@ -1,10 +1,6 @@
 #version 460 core
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
-layout(std140, binding = 1) uniform AccumulationBlock
-{
-    uint frameCount;
-};
 layout(rgba32f, binding = 1) uniform image2D accumulationImage;
 uniform float uBackgroundStrength;
 
@@ -29,6 +25,11 @@ layout(std140, binding = 0) uniform cameraBlock
     vec2 fovAndAspect;
     float halfTanFov;
     float padding;
+};
+
+layout(std140, binding = 1) uniform AccumulationBlock
+{
+    uint frameCount;
 };
 
 struct Material 

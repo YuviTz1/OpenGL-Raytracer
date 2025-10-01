@@ -98,21 +98,6 @@ void Engine::Run(Renderer &renderer)
 
 	m_ui_handler->setScene(&scene, &renderer.shouldResetAccumulation, &renderer.backgroundStrength);
 
-	// Load cube OBJ from res folder
-	/*namespace fs = std::filesystem;
-	std::string objPath = "res/cube.obj";
-
-	Mesh cubeMesh;
-	cubeMesh.id = "Cube";
-	if (fs::exists(objPath) && scene.LoadOBJ(objPath, cubeMesh, renderer.shouldResetAccumulation)) {
-		scene.m_meshes.push_back(std::move(cubeMesh));
-		scene.m_meshesDirty = true;
-		scene.m_selectedMeshIndex = static_cast<int>(scene.m_meshes.size()) - 1;
-	}
-	else {
-		std::cout << "Failed to load OBJ: " << objPath << "\n";
-	}*/
-
 	while (!glfwWindowShouldClose(m_window))
 	{
 		double frameStart = glfwGetTime();
@@ -228,13 +213,13 @@ void Engine::Run(Renderer &renderer)
 		}
 
 		// Frame limiting (sleep based on glfw time)
-		/*double frameEnd = glfwGetTime();
+		double frameEnd = glfwGetTime();
 		double frameDuration = frameEnd - frameStart;
 		if (frameDuration < targetFrameTime)
 		{
 			double sleepSeconds = targetFrameTime - frameDuration;
 			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
-		}*/
+		}
 
 		// Persist last frame start in member (in case Run() is ever re-entered)
 		m_previousTime = lastFrameStart;
