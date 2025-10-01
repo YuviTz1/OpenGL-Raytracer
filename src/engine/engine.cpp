@@ -149,7 +149,7 @@ void Engine::Run(Renderer &renderer)
 
 		// Dispatch compute for the fixed render texture size
 		const int localSizeX = 8;
-		const int localSizeY = 4;
+		const int localSizeY = 8;
 		const int localSizeZ = 1;
 		int groupCountX = (m_renderWidth + localSizeX - 1) / localSizeX;
 		int groupCountY = (m_renderHeight + localSizeY - 1) / localSizeY;
@@ -227,13 +227,13 @@ void Engine::Run(Renderer &renderer)
 		}
 
 		// Frame limiting (sleep based on glfw time)
-		double frameEnd = glfwGetTime();
+		/*double frameEnd = glfwGetTime();
 		double frameDuration = frameEnd - frameStart;
 		if (frameDuration < targetFrameTime)
 		{
 			double sleepSeconds = targetFrameTime - frameDuration;
 			std::this_thread::sleep_for(std::chrono::duration<double>(sleepSeconds));
-		}
+		}*/
 
 		// Persist last frame start in member (in case Run() is ever re-entered)
 		m_previousTime = lastFrameStart;
