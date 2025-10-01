@@ -128,7 +128,8 @@ void Engine::Run(Renderer &renderer)
 		cameraData.up = glm::vec4(renderer.camera.Up, 0.0f);
 		cameraData.right = glm::vec4(renderer.camera.Right, 0.0f);
 		cameraData.fovAndAspect = glm::vec2(glm::radians(renderer.camera.Zoom), aspect);
-		cameraData.padding = glm::vec2(0.0f);
+		cameraData.halfTanFov = tanf(cameraData.fovAndAspect.x * 0.5f);
+		cameraData.padding = 0.0f;
 
 		glfwPollEvents();
 

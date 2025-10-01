@@ -111,20 +111,15 @@ void Renderer::UploadMeshes(Scene& scene)
         metas.push_back(meta);
     }
 
-    // Upload triangles
+    // Use SubData into pre-allocated buffers
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangleSSBO);
-    if (!gpuTris.empty())
-        glBufferData(GL_SHADER_STORAGE_BUFFER, gpuTris.size() * sizeof(GPUTriangle), gpuTris.data(), GL_DYNAMIC_DRAW);
-    else
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+    const GLsizeiptr triBytes = static_cast<GLsizeiptr>(gpuTris.size() * sizeof(GPUTriangle));
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, triBytes, gpuTris.empty() ? nullptr : gpuTris.data());
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_triangleSSBO);
 
-    // Upload mesh metas
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
-    if (!metas.empty())
-        glBufferData(GL_SHADER_STORAGE_BUFFER, metas.size() * sizeof(GPUMesh), metas.data(), GL_DYNAMIC_DRAW);
-    else
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+    const GLsizeiptr metaBytes = static_cast<GLsizeiptr>(metas.size() * sizeof(GPUMesh));
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, metaBytes, metas.empty() ? nullptr : metas.data());
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);

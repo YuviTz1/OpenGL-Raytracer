@@ -14,7 +14,8 @@ struct CameraData {
 	glm::vec4 up;
 	glm::vec4 right;
 	glm::vec2 fovAndAspect;
-	glm::vec2 padding;
+	float halfTanFov;
+	int padding;
 };
 
 struct AccumulationData {

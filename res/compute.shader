@@ -27,7 +27,8 @@ layout(std140, binding = 0) uniform cameraBlock
     vec4 cameraUp;
     vec4 cameraRight;
     vec2 fovAndAspect;
-    vec2 padding;
+    float halfTanFov;
+    float padding;
 };
 
 struct Material 
@@ -95,13 +96,12 @@ Ray createCameraRay(vec2 uv)
     //Convert UV from [0,1] to [-1,1] and apply aspect ratio correction
     vec2 ndc = uv * 2.0 - 1.0;
     ndc.x *= fovAndAspect.y;
-    float tanFov = tan(fovAndAspect.x * 0.5);
 
     //Create camera space vectors
     vec3 rayDir = normalize(
         cameraFront.xyz +
-        ndc.x * tanFov * cameraRight.xyz +
-        ndc.y * tanFov * cameraUp.xyz
+        ndc.x * halfTanFov * cameraRight.xyz +
+        ndc.y * halfTanFov * cameraUp.xyz
     );
 
     return Ray(cameraPos.xyz, rayDir);
