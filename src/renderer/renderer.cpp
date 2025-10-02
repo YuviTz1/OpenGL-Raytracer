@@ -25,7 +25,9 @@ static_assert(sizeof(GPUSphere) == 96, "GPUSphere mismatch");
 struct GPUTriangle {
     glm::vec4 v0, v1, v2; // Triangle vertices
     glm::vec4 n0, n1, n2; // Triangle normals
+	glm::vec4 centroid; // Triangle centroid for BVH
 };
+static_assert(sizeof(GPUTriangle) == 112, "GPUTriangle mismatch");
 
 struct GPUMesh {
     GPUMaterial material;   // Material for this mesh
@@ -35,6 +37,17 @@ struct GPUMesh {
 	int _padD;       // Padding for alignment
 };
 static_assert(sizeof(GPUMesh) == 80, "GPUMesh mismatch");
+
+struct GPUBVHNode {
+    glm::vec4 aabbMin;    // AABB min
+    glm::vec4 aabbMax;    // AABB max
+    unsigned int leftNode;
+    unsigned int firstTriIdx;
+    unsigned int triCount;
+    int _pad[1];          // Padding for alignment
+};
+
+static_assert(sizeof(GPUBVHNode) == 48, "GPUBVHNode mismatch");
 
 Renderer::Renderer(int width, int height)
 	: m_width(width), m_height(height), m_QuadShader("res/vertex.shader", "res/fragment.shader"), m_computeShader("res/compute.shader"), accumulationData{ 0 }, m_frameCount(0)
@@ -80,6 +93,13 @@ void Renderer::UploadMeshes(Scene& scene)
 {
     if (!scene.m_meshesDirty) return;
 
+    //clear scene m_triangleindices and m_bvh and rebuild them before sending to GPU
+    scene.m_triangleIndices.clear();
+    scene.m_bvh.clear();
+	scene.m_triangleIndices.resize(MAX_TRIANGLES);
+	scene.m_bvh.resize(MAX_BVH_NODES);
+    scene.BuildBVH(); // Rebuild BVH to ensure it's up to date
+
     // 1) Pack triangles
     std::vector<GPUTriangle> gpuTris;
     gpuTris.reserve(scene.m_triangles.size());
@@ -92,6 +112,7 @@ void Renderer::UploadMeshes(Scene& scene)
         gt.n0 = glm::vec4(t.n0, 0.0f);
         gt.n1 = glm::vec4(t.n1, 0.0f);
         gt.n2 = glm::vec4(t.n2, 0.0f);
+		gt.centroid = glm::vec4(t.centroid, 0.0f);
         gpuTris.push_back(gt);
     }
 
@@ -113,6 +134,18 @@ void Renderer::UploadMeshes(Scene& scene)
         metas.push_back(meta);
     }
 
+	std::vector<GPUBVHNode> bvh;
+    for (const BVHNode& node : scene.m_bvh)
+    {
+		GPUBVHNode gpuBVHNode{};
+		gpuBVHNode.aabbMin = node.aabbMin;
+		gpuBVHNode.aabbMax = node.aabbMax;
+		gpuBVHNode.leftNode = node.leftNode;
+		gpuBVHNode.firstTriIdx = node.firstTriIdx;
+		gpuBVHNode.triCount = node.triCount;
+		bvh.push_back(gpuBVHNode);
+    }
+
     // Use SubData into pre-allocated buffers
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triangleSSBO);
     const GLsizeiptr triBytes = static_cast<GLsizeiptr>(gpuTris.size() * sizeof(GPUTriangle));
@@ -123,6 +156,19 @@ void Renderer::UploadMeshes(Scene& scene)
     const GLsizeiptr metaBytes = static_cast<GLsizeiptr>(metas.size() * sizeof(GPUMesh));
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, metaBytes, metas.empty() ? nullptr : metas.data());
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshSSBO);
+
+    // BVH nodes (binding 5)
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhSSBO);
+    const GLsizeiptr nodeBytes = static_cast<GLsizeiptr>(bvh.size() * sizeof(GPUBVHNode));
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, nodeBytes, bvh.empty() ? nullptr : bvh.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_bvhSSBO);
+
+    // Triangle indices (binding 6)
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triIndexSSBO);
+    const GLsizeiptr idxBytes = static_cast<GLsizeiptr>(scene.m_triangleIndices.size() * sizeof(int));
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, idxBytes, scene.m_triangleIndices.empty() ? nullptr : scene.m_triangleIndices.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_triIndexSSBO);
+
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -288,6 +334,18 @@ void Renderer::InitMeshSSBO()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_MESHES * sizeof(GPUMesh), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshSSBO);
+
+    // NEW: BVH node buffer (binding 4)
+    glGenBuffers(1, &m_bvhSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_BVH_NODES * sizeof(GPUBVHNode), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_bvhSSBO);
+
+    // NEW: Triangle index buffer (binding 5)
+    glGenBuffers(1, &m_triIndexSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_triIndexSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, MAX_TRIANGLES * sizeof(int), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_triIndexSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }

@@ -4,22 +4,6 @@ layout(rgba32f, binding = 0) uniform image2D screen;
 layout(rgba32f, binding = 1) uniform image2D accumulationImage;
 uniform float uBackgroundStrength;
 
-// Debugging toggle
-uniform bool uDebugStatsEnabled;
-
-// Stats SSBO
-layout(std430, binding = 4) buffer StatsBuffer
-{
-    uint raysSent;
-    uint sphereTests;
-    uint triangleTests;
-    uint sphereHits;     // new: successful sphere intersections
-    uint triangleHits;   // new: successful triangle intersections
-    uint bounces;
-    uint lightHits;
-    uint misses;
-};
-
 const float MIN_DIST = 0.0001;
 const float MAX_DIST = 1000.0;
 //const int MAX_SPHERES = 4;
@@ -74,6 +58,7 @@ layout(std430, binding = 1) buffer SphereBuffer
 struct Triangle {
     vec4 v0, v1, v2;
     vec4 n0, n1, n2;
+    vec4 tri_centroid;
 };
 
 struct Mesh {
@@ -94,6 +79,42 @@ layout(std430, binding = 3) readonly buffer MeshBuffer {
 
 uniform int uSphereCount;
 uniform int uMeshCount; // NEW: number of meshes
+
+// Debugging toggle
+uniform bool uDebugStatsEnabled;
+
+// Stats SSBO
+layout(std430, binding = 4) buffer StatsBuffer
+{
+    uint raysSent;
+    uint sphereTests;
+    uint triangleTests;
+    uint sphereHits;     // new: successful sphere intersections
+    uint triangleHits;   // new: successful triangle intersections
+    uint bounces;
+    uint lightHits;
+    uint misses;
+};
+
+struct BVHNode {
+    vec4 aabbMin;   // xyz min
+    vec4 aabbMax;   // xyz max
+    int leftNode;
+	int firstTriIdx;
+	int triCount;
+    int _pad0;
+};
+
+layout(std430, binding = 5) readonly buffer BVHNodeBuffer {
+    BVHNode nodes[];
+};
+
+layout(std430, binding = 6) readonly buffer TriIndexBuffer {
+    int triIndex[];
+};
+
+uniform int uBVHNodeCount;
+const int BVHStackDepth = 64;
 
 struct Ray
 {
@@ -328,6 +349,76 @@ bool hit_triangle(Ray ray, Material material, Triangle tri, out HitRecord rec)
     return true;
 }
 
+bool aabb_intersect(Ray ray, vec4 aabbMin, vec4 aabbMax, out float tminOut, out float tmaxOut)
+{
+    vec3 invD = 1.0 / ray.direction;
+    vec3 t0s = (aabbMin.xyz - ray.origin) * invD;
+    vec3 t1s = (aabbMax.xyz - ray.origin) * invD;
+    vec3 tsmaller = min(t0s, t1s);
+    vec3 tbigger = max(t0s, t1s);
+    float tmin = max(max(tsmaller.x, tsmaller.y), max(tsmaller.z, MIN_DIST));
+    float tmax = min(min(tbigger.x, tbigger.y), min(tbigger.z, MAX_DIST));
+    tminOut = tmin;
+    tmaxOut = tmax;
+    return tmax >= tmin;
+}
+
+bool traverse_bvh(Ray ray, inout float closest_t, out HitRecord outRec)
+{
+    if(uBVHNodeCount<=0)
+    {
+        return false;
+    }
+
+    int stack[BVHStackDepth];
+    int sp=0;
+    stack[sp++] = 0; // Start with root node
+    bool hitAnything = false;
+    HitRecord bestRec;
+
+    while(sp>0)
+    {
+        int ni = stack[--sp];
+        BVHNode n = nodes[ni];
+
+        float tmin, tmax;
+        if(!aabb_intersect(ray, n.aabbMin, n.aabbMax, tmin, tmax) || tmin > closest_t)
+        {
+            continue;
+        }
+
+        if(n.triCount > 0) // Leaf node
+        {
+            for(int i=0; i<n.triCount; i++)
+            {
+                int triIdx = triIndex[n.firstTriIdx + i];
+                Triangle tri = triangles[triIdx];
+                HitRecord tempRec;
+                if(hit_triangle(ray, meshes[0].material, tri, tempRec) && tempRec.t < closest_t)    //add material handling
+                {
+                    hitAnything = true;
+                    closest_t = tempRec.t;
+                    bestRec = tempRec;
+                }
+            }
+        }
+        else // Internal node
+        {
+            if(sp + 2 <= BVHStackDepth)
+            {
+                stack[sp++] = n.leftNode;
+                stack[sp++] = n.leftNode + 1; // Assuming right child is next
+            }
+        }
+    }
+    
+    if(hitAnything)
+    {
+                outRec = bestRec;
+    }
+    return hitAnything;
+}
+
 bool scatter(Ray ray, HitRecord rec, out vec3 attenuation, out Ray scattered)
 {
     if(rec.material.type == MATERIAL_DIFFUSE)
@@ -414,24 +505,38 @@ vec3 ray_color(Ray ray, int spheres_count)
             }
         }
 
-        // Triangles
-        for (int i = 0; i < uMeshCount; i++)
+        // Triangles with BVH with fallback
         {
-            int start = meshes[i].startIndex;
-            int count = meshes[i].triangleCount;
-
-            for (int j = 0; j < count; j++) 
+            HitRecord temp_rec;
+            float bvh_closest_t = closest_t;
+            if (traverse_bvh(ray, bvh_closest_t, temp_rec))
             {
-                Triangle tri = triangles[start + j];
-                HitRecord temp_rec;
-                if (hit_triangle(ray, meshes[i].material, tri, temp_rec) && temp_rec.t < closest_t) 
-                {
-                    hit_anything = true;
-                    closest_t = temp_rec.t;
-                    closest_rec = temp_rec;
-                }
+                hit_anything = true;
+                closest_t = bvh_closest_t;
+                closest_rec = temp_rec;
             }
+            /*else    //fallback
+            {
+                for (int i = 0; i < uMeshCount; i++)
+                {
+                    int start = meshes[i].startIndex;
+                    int count = meshes[i].triangleCount;
+
+                    for (int j = 0; j < count; j++) 
+                    {
+                        Triangle tri = triangles[start + j];
+                        HitRecord temp_rec;
+                        if (hit_triangle(ray, meshes[i].material, tri, temp_rec) && temp_rec.t < closest_t) 
+                        {
+                            hit_anything = true;
+                            closest_t = temp_rec.t;
+                            closest_rec = temp_rec;
+                        }
+                    }
+                }
+            }*/
         }
+        
 
 
         if (hit_anything)

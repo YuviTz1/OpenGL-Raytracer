@@ -148,6 +148,7 @@ void Engine::Run(Renderer &renderer)
 		renderer.m_computeShader.setInt("uMeshCount", (int)scene.m_meshes.size());
 		renderer.m_computeShader.setFloat("uBackgroundStrength", renderer.backgroundStrength);
 		renderer.m_computeShader.setBool("uDebugStatsEnabled", renderer.debugStatsEnabled);
+		renderer.m_computeShader.setInt("uBVHNodeCount", scene.m_nodesUsed);
 
 		if (renderer.debugStatsEnabled)
 		{

@@ -7,6 +7,7 @@
 #include "camera.hpp"
 #include "sphere.hpp"
 #include "../engine/scene.hpp"
+#include "../engine/bvh.hpp"
 
 struct CameraData {
 	glm::vec4 position;
@@ -59,6 +60,11 @@ public:
 	static constexpr int MAX_TRIANGLES = 1024;
 	unsigned int m_meshSSBO = 0;      // MeshMeta buffer (binding 3)
 	unsigned int m_triangleSSBO = 0;  // Triangles buffer (binding 2)
+
+	unsigned int m_bvhSSBO = 0;       // binding 5
+	unsigned int m_triIndexSSBO = 0;      // binding 6
+	static constexpr int MAX_BVH_NODES = 2 * MAX_TRIANGLES - 1;
+	int m_bvhNodeCount = 0;
 
 	float backgroundStrength = 0.8f;
 

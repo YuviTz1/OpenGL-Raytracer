@@ -340,8 +340,114 @@ bool Scene::RemoveMesh(int index, bool& shouldResetAccumulation)
     return true;
 }
 
+void Scene::BuildBVH()
+{
+    for (int i = 0; i < MAX_TRIANGLES; i++)
+    {
+        m_triangleIndices[i] = i;
+    }
+    for (int i = 0; i < m_triangles.size(); i++)
+    {
+		auto tri = m_triangles[i]; 
+        m_triangles[i].centroid = (tri.v0 + tri.v1 + tri.v2) * 0.333f;
+
+        BVHNode& root = m_bvh[m_rootNodeIdx];
+        root.leftNode = 0;
+        root.firstTriIdx = 0;
+		root.triCount = m_triangles.size();
+        UpdateNodeBounds(m_rootNodeIdx);
+
+		SubDivide(m_rootNodeIdx);
+    }
+
+    for (int i = 0; i < m_nodesUsed; i++)
+    {
+        BVHNode& node = m_bvh[i];
+        std::cout << "Node " << i << ": firstTriIdx=" << node.firstTriIdx << ", triCount=" << node.triCount
+            << ", aabbMin=(" << node.aabbMin.x << "," << node.aabbMin.y << "," << node.aabbMin.z << ")"
+            << ", aabbMax=(" << node.aabbMax.x << "," << node.aabbMax.y << "," << node.aabbMax.z << ")"
+            << ", leftNode=" << node.leftNode
+            << "\n";
+    }
+}
+
+void Scene::UpdateNodeBounds(unsigned int nodeIdx)
+{
+	BVHNode& node = m_bvh[nodeIdx];
+	node.aabbMax = glm::vec4(-1e30f);
+	node.aabbMin = glm::vec4(1e30f);
+
+    for(unsigned int first = node.firstTriIdx, i=0; i<node.triCount; i++)
+    {
+        unsigned int leafTriIndex = m_triangleIndices[first + i];
+		Triangle& leafTri = m_triangles[leafTriIndex];
+        node.aabbMin = glm::min(node.aabbMin, glm::vec4(leafTri.v0, 0.0f));
+        node.aabbMin = glm::min(node.aabbMin, glm::vec4(leafTri.v1, 0.0f));
+        node.aabbMin = glm::min(node.aabbMin, glm::vec4(leafTri.v2, 0.0f));
+        node.aabbMax = glm::max(node.aabbMax, glm::vec4(leafTri.v0, 0.0f));
+        node.aabbMax = glm::max(node.aabbMax, glm::vec4(leafTri.v1, 0.0f));
+		node.aabbMax = glm::max(node.aabbMax, glm::vec4(leafTri.v2, 0.0f));
+	}
+}
+
+void Scene::SubDivide(unsigned int nodeIdx)
+{
+    // terminate recursion
+    BVHNode& node = m_bvh[nodeIdx];
+    if (node.triCount <= 2) return;
+
+    // determine split axis and position
+    glm::vec3 extent = glm::vec3(node.aabbMax - node.aabbMin);
+    int axis = 0;
+    if (extent.y > extent.x) axis = 1;
+    if (extent.z > extent[axis]) axis = 2;
+    float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f; \
+
+        // in-place partition
+        int i = node.firstTriIdx;
+    int j = i + node.triCount - 1;
+
+    while (i <= j)
+    {
+        if (m_triangles[m_triangleIndices[i]].centroid[axis] < splitPos)
+        {
+            i++;
+        }
+        else
+        {
+            std::swap(m_triangleIndices[i], m_triangleIndices[j]);
+            j--;
+        }
+    }
+
+    // abort split if one of the sides is empty
+    int leftCount = i - node.firstTriIdx;
+    if (leftCount == 0 || leftCount == node.triCount) return;
+
+    // create child nodes
+    int leftChildIdx = m_nodesUsed++;
+    int rightChildIdx = m_nodesUsed++;
+
+    m_bvh[leftChildIdx].firstTriIdx = node.firstTriIdx;
+    m_bvh[leftChildIdx].triCount = leftCount;
+    m_bvh[rightChildIdx].firstTriIdx = i;
+    m_bvh[rightChildIdx].triCount = node.triCount - leftCount;
+    node.leftNode = leftChildIdx;;
+    node.triCount = 0; // not a leaf anymore
+    UpdateNodeBounds(leftChildIdx);
+    UpdateNodeBounds(rightChildIdx);
+    // recurse
+    SubDivide(leftChildIdx);
+    SubDivide(rightChildIdx);
+}
+
 Scene::Scene()
 {
+	m_spheres.reserve(MAX_SPHERES);
+	m_triangleIndices.resize(MAX_TRIANGLES+1);
+	m_bvh.resize(2 * MAX_TRIANGLES+1); // upper bound
+
+
     Sphere ground;
     ground.id = "Ground";
     ground.position = glm::vec4(0.0f, -101.0f, -6.0f, 0.0f);

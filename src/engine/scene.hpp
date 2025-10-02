@@ -8,6 +8,7 @@
 #include "../renderer/sphere.hpp"
 #include "../renderer/material.hpp"
 #include "../renderer/mesh.hpp"
+#include "bvh.hpp"
 
 class Scene
 {
@@ -27,8 +28,15 @@ public:
 	static constexpr int MAX_SPHERES = 256;
 	static constexpr int MAX_MESHES = 256;
 	static constexpr int MAX_TRIANGLES = 1024; //todo: check for num triangles
+	std::vector<BVHNode> m_bvh;
+	std::vector<unsigned int> m_triangleIndices;
+	unsigned int m_rootNodeIdx = 0, m_nodesUsed = 1;
 	int m_selectedSphereIndex = -1;
 	int m_selectedMeshIndex = -1;
 	bool m_spheresDirty = false;
 	bool m_meshesDirty = false;
+
+	void BuildBVH();
+	void UpdateNodeBounds(unsigned int nodeIdx);
+	void SubDivide(unsigned int nodeIdx);
 };
