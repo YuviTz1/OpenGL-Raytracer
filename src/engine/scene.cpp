@@ -350,15 +350,15 @@ void Scene::BuildBVH()
     {
 		auto tri = m_triangles[i]; 
         m_triangles[i].centroid = (tri.v0 + tri.v1 + tri.v2) * 0.333f;
-
-        BVHNode& root = m_bvh[m_rootNodeIdx];
-        root.leftNode = 0;
-        root.firstTriIdx = 0;
-		root.triCount = m_triangles.size();
-        UpdateNodeBounds(m_rootNodeIdx);
-
-		SubDivide(m_rootNodeIdx);
     }
+
+    BVHNode& root = m_bvh[m_rootNodeIdx];
+    root.leftNode = 0;
+    root.firstTriIdx = 0;
+    root.triCount = m_triangles.size();
+    UpdateNodeBounds(m_rootNodeIdx);
+
+    SubDivide(m_rootNodeIdx);
 
     for (int i = 0; i < m_nodesUsed; i++)
     {
@@ -401,22 +401,21 @@ void Scene::SubDivide(unsigned int nodeIdx)
     int axis = 0;
     if (extent.y > extent.x) axis = 1;
     if (extent.z > extent[axis]) axis = 2;
-    float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f; \
+    float splitPos = node.aabbMin[axis] + extent[axis] * 0.5f;
 
-        // in-place partition
-        int i = node.firstTriIdx;
+    // in-place partition
+    int i = node.firstTriIdx;
     int j = i + node.triCount - 1;
 
     while (i <= j)
     {
-        if (m_triangles[m_triangleIndices[i]].centroid[axis] < splitPos)
+        if (m_triangles[m_triangleIndices[i]].centroid[axis] <= splitPos)
         {
             i++;
         }
         else
         {
-            std::swap(m_triangleIndices[i], m_triangleIndices[j]);
-            j--;
+            std::swap(m_triangleIndices[i], m_triangleIndices[j--]);
         }
     }
 
